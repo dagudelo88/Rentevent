@@ -27,6 +27,10 @@ const DEFAULT_WEIGHTS = {
   durabilidad: 15
 };
 
+const DEFAULT_APP_SETTINGS = {
+  defaultQuoteValidity: 15 // days
+};
+
 // Datos combinados (Métricas cualitativas + Historial real)
 const DATOS_INICIALES = [
   { id: 1, nombre: "Silla Tiffany Dorada", categoria: "Mobiliario (Sillas/Mesas)", costo: 85000, precioAlquiler: 5500, costoTransporte: 500, rotacion: 9, almacenamiento: 7, facilidadTransporte: 8, durabilidad: 6, cantidad: 200, vecesAlquilado: 15, ingresosHistoricos: 16500000 },
@@ -124,9 +128,34 @@ const EVENTOS_INICIALES = [
 ];
 
 const CLIENTES_INICIALES = [
-  { id: 1, nombre: "Laura & Andrés", tipo: "Cliente", documento: "10203040", telefono: "300 123 4567", email: "laura@example.com" },
-  { id: 2, nombre: "Bancolombia S.A.", tipo: "Corporativo", documento: "900.123.456", telefono: "320 555 1234", email: "eventos@bancolombia.com" },
-  { id: 3, nombre: "Wedding Planner Ana", tipo: "Organizador", documento: "43.567.890", telefono: "315 987 6543", email: "ana@planner.com" }
+  {
+    id: 1,
+    nombre: "Laura & Andrés",
+    tipo: "Cliente",
+    documento: "10203040",
+    contactos: [
+      { id: 1, nombre: "Laura", telefono: "300 123 4567", email: "laura@example.com", esPrincipal: true },
+      { id: 2, nombre: "Andrés", telefono: "300 765 4321", email: "andres@example.com", esPrincipal: false }
+    ]
+  },
+  {
+    id: 2,
+    nombre: "Bancolombia S.A.",
+    tipo: "Corporativo",
+    documento: "900.123.456",
+    contactos: [
+      { id: 1, nombre: "Ana Eventos", telefono: "320 555 1234", email: "eventos@bancolombia.com", esPrincipal: true }
+    ]
+  },
+  {
+    id: 3,
+    nombre: "Wedding Planner Ana",
+    tipo: "Organizador",
+    documento: "43.567.890",
+    contactos: [
+      { id: 1, nombre: "Ana María", telefono: "315 987 6543", email: "ana@planner.com", esPrincipal: true }
+    ]
+  }
 ];
 
 const formatoCOP = new Intl.NumberFormat('es-CO', {
@@ -235,7 +264,7 @@ const calcularMetricas = (item, pesos, scoreColors = DEFAULT_EVENT_SETTINGS.scor
   };
 };
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, eventName }) => {
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, itemType = "evento" }) => {
   const [inputValue, setInputValue] = useState("");
 
   useEffect(() => {
@@ -251,14 +280,14 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, eventName }) => {
           <AlertCircle className="text-red-500" /> Confirmar Eliminación
         </h3>
         <p className="text-slate-600 mb-4">
-          Esta acción no se puede deshacer. Para confirmar, por favor escribe el nombre del evento:
-          <span className="block font-bold text-slate-800 mt-1 select-all bg-slate-100 p-1 rounded border border-slate-200">{eventName}</span>
+          Esta acción no se puede deshacer. Para confirmar, por favor escribe el nombre del {itemType}:
+          <span className="block font-bold text-slate-800 mt-1 select-all bg-slate-100 p-1 rounded border border-slate-200">{itemName}</span>
         </p>
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Escribe el nombre del evento aquí"
+          placeholder={`Escribe el nombre del ${itemType} aquí`}
           className="w-full border border-slate-300 rounded-lg p-2.5 mb-6 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
           autoFocus
         />
@@ -271,10 +300,10 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, eventName }) => {
           </button>
           <button
             onClick={onConfirm}
-            disabled={inputValue !== eventName}
+            disabled={inputValue !== itemName}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
           >
-            <Trash2 size={18} /> Eliminar Evento
+            <Trash2 size={18} /> Eliminar {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
           </button>
         </div>
       </div>
@@ -338,7 +367,31 @@ export default function WeddingRentalApp() {
 
   const [clientes, setClientes] = useState(() => {
     const saved = localStorage.getItem('wedding_clientes_v1');
-    return saved ? JSON.parse(saved) : CLIENTES_INICIALES;
+    let loadedClients = saved ? JSON.parse(saved) : CLIENTES_INICIALES;
+
+    // MIGRACIÓN: Estructura antigua a nueva (contactos array)
+    loadedClients = loadedClients.map(c => {
+      if (!c.contactos || c.contactos.length === 0) {
+        return {
+          ...c,
+          contactos: [
+            {
+              id: Date.now(), // ID temporal único
+              nombre: c.nombre, // Usamos el nombre del cliente como nombre de contacto por defecto
+              telefono: c.telefono || "",
+              email: c.email || "",
+              esPrincipal: true
+            }
+          ],
+          // Opcional: Limpiar campos antiguos si se desea, o mantenerlos por compatibilidad temporal
+          // telefono: undefined,
+          // email: undefined
+        };
+      }
+      return c;
+    });
+
+    return loadedClients;
   });
 
   const [pesos, setPesos] = useState(() => {
@@ -356,7 +409,9 @@ export default function WeddingRentalApp() {
   const [editingClient, setEditingClient] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteClientModalOpen, setDeleteClientModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
+  const [clientToDelete, setClientToDelete] = useState(null);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'list'
   const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
 
@@ -475,7 +530,16 @@ export default function WeddingRentalApp() {
     estado: 'Cotizado',
     itemsSeleccionados: [], costoTransporte: 0, depositoSeguridad: 0, notas: '',
     fechaCotizacion: new Date().toISOString().split('T')[0],
+    fechaValidez: '', // Will be set on open
+    horaEntrega: '',
+    fechaRecogida: '',
+    horaRecogida: '',
     fechaPago: '', comprobantePago: '', cotizacionEnviada: false
+  });
+
+  const [appSettings, setAppSettings] = useState(() => {
+    const saved = localStorage.getItem('wedding_app_settings_v1');
+    return saved ? JSON.parse(saved) : DEFAULT_APP_SETTINGS;
   });
 
   const [sliderValues, setSliderValues] = useState({
@@ -486,7 +550,27 @@ export default function WeddingRentalApp() {
   useEffect(() => { localStorage.setItem('wedding_inventory_v8', JSON.stringify(items)); }, [items]);
   useEffect(() => { localStorage.setItem('wedding_events_v4', JSON.stringify(eventos)); }, [eventos]);
   useEffect(() => { localStorage.setItem('wedding_clientes_v1', JSON.stringify(clientes)); }, [clientes]);
+  useEffect(() => { localStorage.setItem('wedding_clientes_v1', JSON.stringify(clientes)); }, [clientes]);
   useEffect(() => { localStorage.setItem('wedding_weights_v2', JSON.stringify(pesos)); }, [pesos]);
+  useEffect(() => { localStorage.setItem('wedding_app_settings_v1', JSON.stringify(appSettings)); }, [appSettings]);
+
+  // Check for expired quotes on load/change
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const updatedEvents = eventos.map(e => {
+      // Only expire if marked as sent AND past validity date
+      if (e.estado === 'Cotizado' && e.cotizacionEnviada && e.fechaValidez && e.fechaValidez < today) {
+        return { ...e, estado: 'Vencida' };
+      }
+      return e;
+    });
+
+    // Only update if changes were made to avoid infinite loop
+    const hasChanges = JSON.stringify(updatedEvents) !== JSON.stringify(eventos);
+    if (hasChanges) {
+      setEventos(updatedEvents);
+    }
+  }, [eventos]);
 
   useEffect(() => {
     if (showItemForm) {
@@ -571,32 +655,50 @@ export default function WeddingRentalApp() {
 
   const resetEventForm = () => {
     setEventForm({
-      id: null, nombreEvento: '', clienteId: '', cliente: '', fecha: '', lugar: '', telefono: '', estado: 'Cotización',
+      id: null, nombreEvento: '',
+      clienteId: '', cliente: '', clienteDocumento: '', clienteTelefono: '', clienteEmail: '',
+      organizadorId: '', organizador: '', organizadorDocumento: '', organizadorTelefono: '', organizadorEmail: '', organizadorIgualCliente: true,
+      fecha: '', lugar: '', direccion: '',
+      estado: 'Cotizado',
       itemsSeleccionados: [], costoTransporte: 0, depositoSeguridad: 0, notas: '',
-      fechaCotizacion: new Date().toISOString().split('T')[0]
+      fechaCotizacion: new Date().toISOString().split('T')[0],
+      fechaValidez: '',
+      horaEntrega: '',
+      fechaRecogida: '',
+      horaRecogida: '',
+      fechaPago: '', comprobantePago: '', cotizacionEnviada: false
     });
   };
 
+  const [clientContacts, setClientContacts] = useState([]);
+
+  // --- HANDLERS (Eventos) ---
+  // ... (handleSaveEvent, actualizarUsoInventario, etc. - staying same, need to be careful with line numbers)
+  // Re-implementing handleClientSelect to check for contacts
   const handleClientSelect = (e) => {
     const clienteId = Number(e.target.value);
     const cliente = clientes.find(c => c.id === clienteId);
+
     if (cliente) {
+      // Find primary contact
+      const primaryContact = cliente.contactos?.find(c => c.esPrincipal) || cliente.contactos?.[0] || {};
+
       setEventForm(prev => {
         const newState = {
           ...prev,
           clienteId: cliente.id,
           cliente: cliente.nombre,
           clienteDocumento: cliente.documento || '',
-          clienteTelefono: cliente.telefono || '',
-          clienteEmail: cliente.email || ''
+          clienteTelefono: primaryContact.telefono || '',
+          clienteEmail: primaryContact.email || ''
         };
         // Auto-asignar organizador si el check está activo
         if (prev.organizadorIgualCliente) {
           newState.organizadorId = cliente.id;
           newState.organizador = cliente.nombre;
           newState.organizadorDocumento = cliente.documento || '';
-          newState.organizadorTelefono = cliente.telefono || '';
-          newState.organizadorEmail = cliente.email || '';
+          newState.organizadorTelefono = primaryContact.telefono || '';
+          newState.organizadorEmail = primaryContact.email || '';
         }
         return newState;
       });
@@ -617,13 +719,19 @@ export default function WeddingRentalApp() {
   const handleSaveClient = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+
+    // Validate that at least one contact exists
+    if (clientContacts.length === 0) {
+      alert("Debe agregar al menos un contacto.");
+      return;
+    }
+
     const newClient = {
-      id: editingClient ? editingClient.id : Date.now(),
+      id: editingClient ? editingClient.id : (clientes.length > 0 ? Math.max(...clientes.map(c => c.id)) + 1 : 1),
       nombre: formData.get('nombre'),
       tipo: formData.get('tipo'),
       documento: formData.get('documento'),
-      telefono: formData.get('telefono'),
-      email: formData.get('email'),
+      contactos: clientContacts
     };
 
     if (editingClient) setClientes(prev => prev.map(c => c.id === editingClient.id ? newClient : c));
@@ -631,6 +739,44 @@ export default function WeddingRentalApp() {
 
     setShowClientForm(false);
     setEditingClient(null);
+    setClientContacts([]);
+  };
+
+  // Effect to load contacts when editing
+  useEffect(() => {
+    if (showClientForm) {
+      if (editingClient && editingClient.contactos) {
+        setClientContacts(editingClient.contactos);
+      } else {
+        setClientContacts([]);
+      }
+    }
+  }, [showClientForm, editingClient]);
+
+  const addContact = () => {
+    const newContact = {
+      id: Date.now(),
+      nombre: "",
+      telefono: "",
+      email: "",
+      esPrincipal: clientContacts.length === 0 // First one matches principal by default
+    };
+    setClientContacts([...clientContacts, newContact]);
+  };
+
+  const removeContact = (id) => {
+    setClientContacts(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateContact = (id, field, value) => {
+    setClientContacts(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const setPrimaryContact = (id) => {
+    setClientContacts(prev => prev.map(c => ({
+      ...c,
+      esPrincipal: c.id === id
+    })));
   };
 
   // --- HANDLERS (Inventario) ---
@@ -675,6 +821,19 @@ export default function WeddingRentalApp() {
       setEventos(prev => prev.filter(e => e.id !== eventToDelete.id));
       setDeleteModalOpen(false);
       setEventToDelete(null);
+    }
+  };
+
+  const handleDeleteClient = (cliente) => {
+    setClientToDelete(cliente);
+    setDeleteClientModalOpen(true);
+  };
+
+  const confirmDeleteClient = () => {
+    if (clientToDelete) {
+      setClientes(prev => prev.filter(c => c.id !== clientToDelete.id));
+      setDeleteClientModalOpen(false);
+      setClientToDelete(null);
     }
   };
 
@@ -763,6 +922,17 @@ export default function WeddingRentalApp() {
                   </h3>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Validez Cotización (días):</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={appSettings.defaultQuoteValidity}
+                        onChange={(e) => setAppSettings(prev => ({ ...prev, defaultQuoteValidity: Number(e.target.value) }))}
+                        className="w-16 p-1 border border-slate-300 rounded text-center text-sm"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-600">Cotización Antigua (días):</span>
                       <input
                         type="number"
@@ -822,7 +992,7 @@ export default function WeddingRentalApp() {
                     <Settings size={18} className="text-indigo-500" /> Colores de Estado
                   </h3>
                   <div className="space-y-3">
-                    {['Confirmado', 'Pago', 'Realizado & Pagado', 'Cancelado', 'Cotizado'].map(status => (
+                    {['Confirmado', 'Pago', 'Realizado & Pagado', 'Cancelado', 'Cotizado', 'Vencida'].map(status => (
                       <div key={status} className="flex flex-col gap-1">
                         <span className="text-xs font-semibold text-slate-500">{status}</span>
                         <div className="flex flex-wrap gap-1">
@@ -934,6 +1104,7 @@ export default function WeddingRentalApp() {
                         <option>8% (Consumo)</option>
                       </select>
                     </div>
+
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Moneda</label>
                       <select className="w-full border border-slate-300 rounded-lg p-2.5 text-slate-600 bg-white" disabled>
@@ -957,7 +1128,16 @@ export default function WeddingRentalApp() {
           isOpen={deleteModalOpen}
           onClose={() => { setDeleteModalOpen(false); setEventToDelete(null); }}
           onConfirm={confirmDeleteEvent}
-          eventName={eventToDelete?.nombreEvento || eventToDelete?.cliente || ""}
+          itemName={eventToDelete?.nombreEvento || eventToDelete?.cliente || ""}
+          itemType="evento"
+        />
+
+        <DeleteConfirmationModal
+          isOpen={deleteClientModalOpen}
+          onClose={() => { setDeleteClientModalOpen(false); setClientToDelete(null); }}
+          onConfirm={confirmDeleteClient}
+          itemName={clientToDelete?.nombre || ""}
+          itemType="cliente"
         />
 
         <main className="flex-1 p-8 bg-slate-50/50">
@@ -1083,13 +1263,15 @@ export default function WeddingRentalApp() {
 
               {/* KANBAN SUMMARY */}
               {/* KANBAN SUMMARY */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+              {/* KANBAN SUMMARY */}
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
                 {[
                   { label: 'Cotizaciones', status: ['Cotizado', 'Cotización'], icon: FileText, color: 'bg-yellow-100 text-yellow-700' },
                   { label: 'Confirmados', status: ['Confirmado'], icon: CheckCircle, color: 'bg-blue-100 text-blue-700' },
                   { label: 'Pagos', status: ['Pago', 'Pagado'], icon: DollarSign, color: 'bg-emerald-100 text-emerald-700' },
                   { label: 'Realizados & Pagados', status: ['Realizado & Pagado', 'Realizado'], icon: CheckSquare, color: 'bg-purple-100 text-purple-700' },
                   { label: 'Cancelados', status: ['Cancelado'], icon: X, color: 'bg-red-100 text-red-700' },
+                  { label: 'Vencidas', status: ['Vencida'], icon: AlertCircle, color: 'bg-orange-100 text-orange-700' },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
@@ -1269,35 +1451,46 @@ export default function WeddingRentalApp() {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-xs">
                     <tr>
+                      <th className="p-4 w-16">ID</th>
                       <th className="p-4">Nombre / Empresa</th>
                       <th className="p-4">Tipo</th>
-                      <th className="p-4">Contacto</th>
+                      <th className="p-4">Contacto Principal</th>
                       <th className="p-4">Documento</th>
                       <th className="p-4 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {clientes.filter(c => c.nombre.toLowerCase().includes(clientSearch.toLowerCase())).map(cliente => (
-                      <tr key={cliente.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-medium text-slate-800">{cliente.nombre}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${cliente.tipo === 'Organizador' ? 'bg-purple-100 text-purple-700' : cliente.tipo === 'Corporativo' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                            {cliente.tipo}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm text-slate-600">
-                          <div className="flex items-center gap-2 mb-1"><Phone size={14} /> {cliente.telefono}</div>
-                          <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 bg-slate-200 rounded-full flex items-center justify-center text-[10px]">@</div> {cliente.email}</div>
-                        </td>
-                        <td className="p-4 text-sm text-slate-500">{cliente.documento}</td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-1">
-                            <button onClick={() => { setEditingClient(cliente); setShowClientForm(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded"><Edit2 size={16} /></button>
-                            <button onClick={() => { if (window.confirm('Eliminar?')) setClientes(prev => prev.filter(c => c.id !== cliente.id)) }} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {clientes.filter(c => c.nombre.toLowerCase().includes(clientSearch.toLowerCase())).map(cliente => {
+                      const primaryContact = cliente.contactos?.find(c => c.esPrincipal) || cliente.contactos?.[0] || {};
+                      return (
+                        <tr key={cliente.id} className="hover:bg-slate-50">
+                          <td className="p-4 text-slate-400 font-mono text-xs">#{cliente.id}</td>
+                          <td className="p-4 font-medium text-slate-800">{cliente.nombre}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${cliente.tipo === 'Organizador' ? 'bg-purple-100 text-purple-700' : cliente.tipo === 'Corporativo' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                              {cliente.tipo}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-slate-600">
+                            {primaryContact.nombre && <div className="font-bold text-xs text-slate-700 mb-1">{primaryContact.nombre}</div>}
+                            <div className="flex items-center gap-2 mb-1"><Phone size={14} /> {primaryContact.telefono}</div>
+                            <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 bg-slate-200 rounded-full flex items-center justify-center text-[10px]">@</div> {primaryContact.email}</div>
+                            {cliente.contactos?.length > 1 && (
+                              <div className="text-[10px] text-indigo-500 font-medium mt-1">
+                                +{cliente.contactos.length - 1} otros contactos
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4 text-sm text-slate-500">{cliente.documento}</td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1">
+                              <button onClick={() => { setEditingClient(cliente); setShowClientForm(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded"><Edit2 size={16} /></button>
+                              <button onClick={() => handleDeleteClient(cliente)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {clientes.length === 0 && <div className="p-8 text-center text-slate-500">No hay clientes registrados</div>}
@@ -1393,7 +1586,18 @@ export default function WeddingRentalApp() {
                           <option value="Cancelado">Cancelado</option>
                         </select>
                         <div className="flex items-center gap-2 mt-2">
-                          <input type="checkbox" id="cotEnviada" checked={eventForm.cotizacionEnviada} onChange={e => setEventForm({ ...eventForm, cotizacionEnviada: e.target.checked })} className="w-4 h-4 text-indigo-600 rounded" />
+                          <input type="checkbox" id="cotEnviada" checked={eventForm.cotizacionEnviada} onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            const validityDate = isChecked
+                              ? new Date(Date.now() + (appSettings.defaultQuoteValidity * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
+                              : '';
+
+                            setEventForm(prev => ({
+                              ...prev,
+                              cotizacionEnviada: isChecked,
+                              fechaValidez: validityDate
+                            }));
+                          }} className="w-4 h-4 text-indigo-600 rounded" />
                           <label htmlFor="cotEnviada" className="text-sm text-slate-700 font-medium">Cotización Enviada al Cliente</label>
                         </div>
                       </div>
@@ -1413,9 +1617,18 @@ export default function WeddingRentalApp() {
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                           </select>
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            <input value={eventForm.clienteDocumento || ''} placeholder="Documento" className="border p-1.5 rounded bg-white" readOnly />
-                            <input value={eventForm.clienteTelefono || ''} placeholder="Teléfono" className="border p-1.5 rounded bg-white" readOnly />
-                            <input value={eventForm.clienteEmail || ''} placeholder="Email" className="border p-1.5 rounded bg-white col-span-2" readOnly />
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Documento</label>
+                              <input value={eventForm.clienteDocumento || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Teléfono</label>
+                              <input value={eventForm.clienteTelefono || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Email</label>
+                              <input value={eventForm.clienteEmail || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
                           </div>
                         </div>
 
@@ -1449,14 +1662,17 @@ export default function WeddingRentalApp() {
                             <select className="w-full border p-2 rounded bg-white mb-2 text-sm" value={eventForm.organizadorId || ''} onChange={(e) => {
                               const orgId = Number(e.target.value);
                               const org = clientes.find(c => c.id === orgId);
-                              if (org) setEventForm(prev => ({
-                                ...prev,
-                                organizadorId: org.id,
-                                organizador: org.nombre,
-                                organizadorDocumento: org.documento,
-                                organizadorTelefono: org.telefono,
-                                organizadorEmail: org.email
-                              }));
+                              if (org) {
+                                const primaryContact = org.contactos?.find(c => c.esPrincipal) || org.contactos?.[0] || {};
+                                setEventForm(prev => ({
+                                  ...prev,
+                                  organizadorId: org.id,
+                                  organizador: org.nombre,
+                                  organizadorDocumento: org.documento || '',
+                                  organizadorTelefono: primaryContact.telefono || '',
+                                  organizadorEmail: primaryContact.email || ''
+                                }));
+                              }
                             }}>
                               <option value="">Seleccionar Organizador...</option>
                               {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.tipo})</option>)}
@@ -1464,9 +1680,18 @@ export default function WeddingRentalApp() {
                           )}
 
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            <input value={eventForm.organizadorDocumento || ''} placeholder="Documento" className="border p-1.5 rounded bg-white" readOnly />
-                            <input value={eventForm.organizadorTelefono || ''} placeholder="Teléfono" className="border p-1.5 rounded bg-white" readOnly />
-                            <input value={eventForm.organizadorEmail || ''} placeholder="Email" className="border p-1.5 rounded bg-white col-span-2" readOnly />
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Documento</label>
+                              <input value={eventForm.organizadorDocumento || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Teléfono</label>
+                              <input value={eventForm.organizadorTelefono || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-[10px] text-slate-400 block mb-0.5 uppercase font-bold">Email</label>
+                              <input value={eventForm.organizadorEmail || ''} placeholder="-" className="w-full border p-1.5 rounded bg-white" readOnly />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1481,7 +1706,15 @@ export default function WeddingRentalApp() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-xs font-bold text-slate-500 block">Fecha Cotización</label><input type="date" value={eventForm.fechaCotizacion || ''} onChange={e => setEventForm({ ...eventForm, fechaCotizacion: e.target.value })} className="w-full border p-2 rounded mt-1 text-xs text-slate-400" /></div>
+                          <div><label className="text-xs font-bold text-slate-500 block">Validez Cotización</label><input type="date" value={eventForm.fechaValidez || ''} readOnly className={`w-full border p-2 rounded mt-1 text-xs font-medium cursor-not-allowed ${eventForm.fechaValidez ? 'bg-white text-slate-700' : 'bg-slate-100 text-slate-400'}`} placeholder="Se calcula al enviar" /></div>
+
+                          <div className="col-span-2 border-t border-slate-100 my-1"></div>
+
                           <div><label className="text-xs font-bold text-slate-500 block">Fecha Evento</label><input type="date" value={eventForm.fecha} onChange={e => setEventForm({ ...eventForm, fecha: e.target.value })} className="w-full border p-2 rounded mt-1 text-xs font-bold" /></div>
+                          <div><label className="text-xs font-bold text-slate-500 block">Hora Entrega</label><input type="time" value={eventForm.horaEntrega || ''} onChange={e => setEventForm({ ...eventForm, horaEntrega: e.target.value })} className="w-full border p-2 rounded mt-1 text-xs" /></div>
+
+                          <div><label className="text-xs font-bold text-slate-500 block">Fecha Recogida</label><input type="date" value={eventForm.fechaRecogida || ''} onChange={e => setEventForm({ ...eventForm, fechaRecogida: e.target.value })} className="w-full border p-2 rounded mt-1 text-xs" /></div>
+                          <div><label className="text-xs font-bold text-slate-500 block">Hora Recogida</label><input type="time" value={eventForm.horaRecogida || ''} onChange={e => setEventForm({ ...eventForm, horaRecogida: e.target.value })} className="w-full border p-2 rounded mt-1 text-xs" /></div>
                         </div>
 
                         <div className="pt-2 border-t mt-2">
@@ -1546,8 +1779,70 @@ export default function WeddingRentalApp() {
                 <div><label className="text-xs font-bold text-slate-500 uppercase">Nombre / Razón Social</label><input required name="nombre" defaultValue={editingClient?.nombre} className="w-full border p-2 rounded" /></div>
                 <div><label className="text-xs font-bold text-slate-500 uppercase">Tipo</label><select name="tipo" defaultValue={editingClient?.tipo || 'Cliente'} className="w-full border p-2 rounded"><option>Cliente</option><option>Organizador</option><option>Corporativo</option></select></div>
                 <div><label className="text-xs font-bold text-slate-500 uppercase">Documento / NIT</label><input name="documento" defaultValue={editingClient?.documento} className="w-full border p-2 rounded" /></div>
-                <div><label className="text-xs font-bold text-slate-500 uppercase">Teléfono</label><input required name="telefono" defaultValue={editingClient?.telefono} className="w-full border p-2 rounded" /></div>
-                <div><label className="text-xs font-bold text-slate-500 uppercase">Email</label><input type="email" name="email" defaultValue={editingClient?.email} className="w-full border p-2 rounded" /></div>
+
+
+                {/* GESTIÓN DE CONTACTOS */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Users size={14} /> Personas de Contacto</label>
+                    <button type="button" onClick={addContact} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 font-bold transition">
+                      + Agregar
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {clientContacts.map((contact, index) => (
+                      <div key={contact.id} className={`bg-white p-3 rounded-lg border ${contact.esPrincipal ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200'} relative group transition`}>
+                        {contact.esPrincipal && (
+                          <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow-sm z-10">
+                            PRINCIPAL
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <input
+                            placeholder="Nombre Contacto"
+                            value={contact.nombre}
+                            onChange={(e) => updateContact(contact.id, 'nombre', e.target.value)}
+                            className="text-sm font-bold border-b border-slate-200 focus:border-indigo-500 outline-none pb-1"
+                            required
+                          />
+                          <div className="flex justify-end gap-2">
+                            {!contact.esPrincipal && (
+                              <button type="button" onClick={() => setPrimaryContact(contact.id)} className="text-[10px] text-indigo-500 hover:underline" title="Marcar como principal">
+                                Hacer Principal
+                              </button>
+                            )}
+                            {clientContacts.length > 1 && (
+                              <button type="button" onClick={() => removeContact(contact.id)} className="text-red-400 hover:text-red-600">
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            placeholder="Teléfono"
+                            value={contact.telefono}
+                            onChange={(e) => updateContact(contact.id, 'telefono', e.target.value)}
+                            className="text-xs border p-1 rounded bg-slate-50 focus:bg-white transition"
+                          />
+                          <input
+                            placeholder="Email"
+                            value={contact.email}
+                            onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
+                            className="text-xs border p-1 rounded bg-slate-50 focus:bg-white transition"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {clientContacts.length === 0 && (
+                      <div className="text-center py-4 text-xs text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
+                        No hay contactos. Agrega uno.
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
                   <button type="button" onClick={() => setShowClientForm(false)} className="px-4 py-2 text-slate-600">Cancelar</button>

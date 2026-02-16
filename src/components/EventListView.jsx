@@ -22,7 +22,11 @@ const EventListView = ({ events, onEdit, onDelete, formatCurrency, settings }) =
         { key: 'telefono', label: 'Teléfono' },
         { key: 'organizador', label: 'Organizador', sortable: true },
         { key: 'fechaCotizacion', label: 'F. Cotización', sortable: true },
+        { key: 'fechaValidez', label: 'F. Validez', sortable: true },
         { key: 'cotizacionEnviada', label: 'Cot. Enviada', sortable: true },
+        { key: 'horaEntrega', label: 'Hora Entrega', sortable: true },
+        { key: 'fechaRecogida', label: 'F. Recogida', sortable: true },
+        { key: 'horaRecogida', label: 'Hora Recogida', sortable: true },
         { key: 'total', label: 'Total General', required: true, sortable: true },
         { key: 'costoTransporte', label: 'Costo Transp.', sortable: true },
         { key: 'depositoSeguridad', label: 'Depósito', sortable: true },
@@ -260,6 +264,11 @@ const EventListView = ({ events, onEdit, onDelete, formatCurrency, settings }) =
                                             }
                                         </td>
                                     )}
+
+                                    {visibleColumns.includes('fechaValidez') && <td className="p-4 text-slate-500 text-xs">{event.fechaValidez || '-'}</td>}
+                                    {visibleColumns.includes('horaEntrega') && <td className="p-4 text-slate-500 text-xs">{event.horaEntrega || '-'}</td>}
+                                    {visibleColumns.includes('fechaRecogida') && <td className="p-4 text-slate-500 text-xs">{event.fechaRecogida || '-'}</td>}
+                                    {visibleColumns.includes('horaRecogida') && <td className="p-4 text-slate-500 text-xs">{event.horaRecogida || '-'}</td>}
 
                                     {visibleColumns.includes('total') && (
                                         <td className="p-4 text-right font-bold text-slate-700">
