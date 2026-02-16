@@ -71,7 +71,7 @@ const EVENTOS_INICIALES = [
     fecha: "2026-04-20",
     lugar: "Salón Social El Poblado",
     telefono: "310 987 6543",
-    estado: "Cotización",
+    estado: "Cotizado",
     itemsSeleccionados: [
       { itemId: 2, nombre: "Sala Lounge Chester (8 pax)", cantidad: 2, precioUnitario: 400000 },
       { itemId: 11, nombre: "Pista Baile LED (m2)", cantidad: 16, precioUnitario: 60000 },
@@ -90,7 +90,7 @@ const EVENTOS_INICIALES = [
     fecha: "2025-12-10",
     lugar: "Plaza Mayor",
     telefono: "320 555 1234",
-    estado: "Realizado",
+    estado: "Realizado & Pagado",
     itemsSeleccionados: [
       { itemId: 1, nombre: "Silla Tiffany Dorada", cantidad: 200, precioUnitario: 5500 },
       { itemId: 7, nombre: "Mesa Redonda (10 pax)", cantidad: 20, precioUnitario: 35000 },
@@ -207,6 +207,53 @@ const calcularMetricas = (item, pesos) => {
   };
 };
 
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, eventName }) => {
+  const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    if (isOpen) setInputValue("");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <AlertCircle className="text-red-500" /> Confirmar Eliminación
+        </h3>
+        <p className="text-slate-600 mb-4">
+          Esta acción no se puede deshacer. Para confirmar, por favor escribe el nombre del evento:
+          <span className="block font-bold text-slate-800 mt-1 select-all bg-slate-100 p-1 rounded border border-slate-200">{eventName}</span>
+        </p>
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Escribe el nombre del evento aquí"
+          className="w-full border border-slate-300 rounded-lg p-2.5 mb-6 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
+          autoFocus
+        />
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={inputValue !== eventName}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+          >
+            <Trash2 size={18} /> Eliminar Evento
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function WeddingRentalApp() {
   // --- ESTADOS ---
   const [activeTab, setActiveTab] = useState('inventory');
@@ -240,6 +287,27 @@ export default function WeddingRentalApp() {
     return loadedEvents;
   });
 
+  // DATA REPAIR & MIGRATION EFFECT
+  useEffect(() => {
+    const fixedEvents = eventos.map(ev => {
+      let nuevoEstado = ev.estado;
+      // Normalización de estados legacy
+      if (ev.estado === 'Cotización') nuevoEstado = 'Cotizado';
+      if (ev.estado === 'Realizado') nuevoEstado = 'Realizado & Pagado';
+      if (ev.estado === 'Pagado') nuevoEstado = 'Pago';
+
+      if (nuevoEstado !== ev.estado) {
+        return { ...ev, estado: nuevoEstado };
+      }
+      return ev;
+    });
+
+    // Solo actualizar si hubo cambios para evitar loops
+    if (JSON.stringify(fixedEvents) !== JSON.stringify(eventos)) {
+      setEventos(fixedEvents);
+    }
+  }, [eventos.length]); // Correr cuando cambie la cantidad, o mount
+
   const [clientes, setClientes] = useState(() => {
     const saved = localStorage.getItem('wedding_clientes_v1');
     return saved ? JSON.parse(saved) : CLIENTES_INICIALES;
@@ -259,6 +327,8 @@ export default function WeddingRentalApp() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState(null);
 
   // Event Form State
   const [eventForm, setEventForm] = useState({
@@ -454,6 +524,19 @@ export default function WeddingRentalApp() {
     setEditingItem(null);
   };
 
+  const handleDeleteEvent = (evento) => {
+    setEventToDelete(evento);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteEvent = () => {
+    if (eventToDelete) {
+      setEventos(prev => prev.filter(e => e.id !== eventToDelete.id));
+      setDeleteModalOpen(false);
+      setEventToDelete(null);
+    }
+  };
+
   // --- RENDERIZADO ---
 
   return (
@@ -595,6 +678,14 @@ export default function WeddingRentalApp() {
           </>
         )}
 
+        {/* DELETE CONFIRMATION MODAL */}
+        <DeleteConfirmationModal
+          isOpen={deleteModalOpen}
+          onClose={() => { setDeleteModalOpen(false); setEventToDelete(null); }}
+          onConfirm={confirmDeleteEvent}
+          eventName={eventToDelete?.nombreEvento || eventToDelete?.cliente || ""}
+        />
+
         <main className="flex-1 p-8 bg-slate-50/50">
 
           {/* --- VISTA INVENTARIO --- */}
@@ -691,17 +782,17 @@ export default function WeddingRentalApp() {
               {/* KANBAN SUMMARY */}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 {[
-                  { label: 'Cotizaciones', status: 'Cotizado', icon: FileText, color: 'bg-yellow-100 text-yellow-700' },
-                  { label: 'Confirmados', status: 'Confirmado', icon: CheckCircle, color: 'bg-blue-100 text-blue-700' },
-                  { label: 'Pagos', status: 'Pago', icon: DollarSign, color: 'bg-emerald-100 text-emerald-700' },
-                  { label: 'Finalizados', status: 'Realizado & Pagado', icon: CheckSquare, color: 'bg-purple-100 text-purple-700' },
-                  { label: 'Cancelados', status: 'Cancelado', icon: X, color: 'bg-red-100 text-red-700' },
+                  { label: 'Cotizaciones', status: ['Cotizado', 'Cotización'], icon: FileText, color: 'bg-yellow-100 text-yellow-700' },
+                  { label: 'Confirmados', status: ['Confirmado'], icon: CheckCircle, color: 'bg-blue-100 text-blue-700' },
+                  { label: 'Pagos', status: ['Pago', 'Pagado'], icon: DollarSign, color: 'bg-emerald-100 text-emerald-700' },
+                  { label: 'Realizados & Pagados', status: ['Realizado & Pagado', 'Realizado'], icon: CheckSquare, color: 'bg-purple-100 text-purple-700' },
+                  { label: 'Cancelados', status: ['Cancelado'], icon: X, color: 'bg-red-100 text-red-700' },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-500 uppercase">{stat.label}</p>
                       <p className="text-2xl font-bold text-slate-800">
-                        {eventos.filter(e => e.estado === stat.status).length}
+                        {eventos.filter(e => stat.status.includes(e.estado)).length}
                       </p>
                     </div>
                     <div className={`p-2 rounded-lg ${stat.color}`}>
@@ -784,7 +875,12 @@ export default function WeddingRentalApp() {
                       <div className="space-y-2 mb-4">
                         <div className="flex justify-between text-sm"><span className="text-slate-500">Total Cliente</span><span className="font-bold text-indigo-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
                       </div>
-                      <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded text-sm font-medium transition">Ver / Editar</button>
+                      <div className="mt-4 flex gap-2">
+                        <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="flex-1 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg text-sm font-medium transition">Ver Detalle</button>
+                        <button onClick={() => handleDeleteEvent(evento)} className="px-3 text-red-500 hover:bg-red-50 border border-red-200 rounded-lg transition" title="Eliminar Evento">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
