@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus, Trash2, Edit2, Save, X, Download, TrendingUp, Package, Truck,
   AlertCircle, Settings, RotateCcw, Calendar, Users, FileText, CheckCircle,
-  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare
+  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid
 } from 'lucide-react';
+import EventListView from './components/EventListView';
 
 // --- CONFIGURACIÓN Y UTILERÍAS ---
 
@@ -134,6 +135,22 @@ const formatoCOP = new Intl.NumberFormat('es-CO', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
+
+// --- CONFIGURACIÓN POR DEFECTO ---
+const DEFAULT_EVENT_SETTINGS = {
+  alerts: { quoteWarning: 7, eventUrgent: 15 },
+  statusColors: {
+    'Confirmado': 'bg-blue-100 text-blue-700',
+    'Pago': 'bg-emerald-100 text-emerald-700',
+    'Realizado & Pagado': 'bg-purple-100 text-purple-700',
+    'Cancelado': 'bg-red-100 text-red-700',
+    'Cotizado': 'bg-yellow-100 text-yellow-700'
+  },
+  alertColors: {
+    'warning': 'bg-yellow-400',
+    'urgent': 'bg-red-500'
+  }
+};
 
 // --- LÓGICA DE NEGOCIO ---
 
@@ -329,6 +346,57 @@ export default function WeddingRentalApp() {
   const [clientSearch, setClientSearch] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
+  const [viewMode, setViewMode] = useState('card'); // 'card' | 'list'
+
+  const [eventSettings, setEventSettings] = useState(() => {
+    const saved = localStorage.getItem('eventSettings');
+    return saved ? JSON.parse(saved) : DEFAULT_EVENT_SETTINGS;
+  });
+
+  const handleSaveSettings = (newSettings) => {
+    setEventSettings(newSettings);
+    localStorage.setItem('eventSettings', JSON.stringify(newSettings));
+  };
+
+  const handleAlertChange = (key, value) => {
+    const newSettings = {
+      ...eventSettings,
+      alerts: {
+        ...eventSettings.alerts,
+        [key]: parseInt(value) || 0
+      }
+    };
+    handleSaveSettings(newSettings);
+  };
+
+  const handleColorChange = (status, colorClass) => {
+    const newSettings = {
+      ...eventSettings,
+      statusColors: {
+        ...eventSettings.statusColors,
+        [status]: colorClass
+      }
+    };
+    handleSaveSettings(newSettings);
+  };
+
+  const handleAlertColorChange = (type, colorClass) => {
+    // Extract just the bg color part if possible, or expect full class. 
+    // For simplicity, we just save the class selected from palette
+    // But wait, the palette buttons give 'bg-X text-Y'. 
+    // The alert bar only needs 'bg-X'. 
+    // We can just use the bg part.
+    const bgClass = colorClass.split(' ')[0];
+
+    const newSettings = {
+      ...eventSettings,
+      alertColors: {
+        ...eventSettings.alertColors, // Ensure we preserve other alerts
+        [type]: bgClass
+      }
+    };
+    handleSaveSettings(newSettings);
+  };
 
   // Event Form State
   const [eventForm, setEventForm] = useState({
@@ -610,7 +678,101 @@ export default function WeddingRentalApp() {
               </div>
 
               {/* CONTENIDO DINÁMICO SEGÚN PÁGINA */}
-              {activeTab === 'inventory' ? (
+              {activeTab === 'events' ? (
+                <div className="space-y-6">
+                  <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                    <p className="text-sm text-indigo-800 font-medium">Configuración de alertas y colores para eventos.</p>
+                  </div>
+
+                  {/* ALERTAS */}
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b pb-2">
+                    <AlertCircle size={18} className="text-orange-500" /> Alertas de Fecha
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Cotización Antigua (días):</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={eventSettings.alerts.quoteWarning}
+                        onChange={(e) => handleAlertChange('quoteWarning', e.target.value)}
+                        className="w-16 p-1 border border-slate-300 rounded text-center text-sm"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Evento Próximo (días):</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={eventSettings.alerts.eventUrgent}
+                        onChange={(e) => handleAlertChange('eventUrgent', e.target.value)}
+                        className="w-16 p-1 border border-slate-300 rounded text-center text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ALERT COLORS - Using a simpler palette since it's just a line */}
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b pb-2 pt-4">
+                    <AlertCircle size={18} className="text-red-500" /> Colores de Alerta
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Alerta Advertencia (Amarillo):</span>
+                      <div className="flex gap-1">
+                        {['bg-yellow-400', 'bg-orange-400', 'bg-amber-400', 'bg-lime-400'].map(bg => (
+                          <button
+                            key={bg}
+                            onClick={() => handleAlertColorChange('warning', bg)}
+                            className={`w-6 h-6 rounded-full border border-slate-200 ${bg} ${(eventSettings.alertColors?.warning || 'bg-yellow-400') === bg ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600">Alerta Urgente (Rojo):</span>
+                      <div className="flex gap-1">
+                        {['bg-red-500', 'bg-rose-500', 'bg-pink-500', 'bg-purple-500'].map(bg => (
+                          <button
+                            key={bg}
+                            onClick={() => handleAlertColorChange('urgent', bg)}
+                            className={`w-6 h-6 rounded-full border border-slate-200 ${bg} ${(eventSettings.alertColors?.urgent || 'bg-red-500') === bg ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* COLORES ESTADO */}
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b pb-2 pt-4">
+                    <Settings size={18} className="text-indigo-500" /> Colores de Estado
+                  </h3>
+                  <div className="space-y-3">
+                    {['Confirmado', 'Pago', 'Realizado & Pagado', 'Cancelado', 'Cotizado'].map(status => (
+                      <div key={status} className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-slate-500">{status}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            'bg-slate-100 text-slate-700', 'bg-red-100 text-red-700', 'bg-orange-100 text-orange-700', 'bg-amber-100 text-amber-700',
+                            'bg-yellow-100 text-yellow-700', 'bg-lime-100 text-lime-700', 'bg-green-100 text-green-700', 'bg-emerald-100 text-emerald-700',
+                            'bg-teal-100 text-teal-700', 'bg-cyan-100 text-cyan-700', 'bg-sky-100 text-sky-700', 'bg-blue-100 text-blue-700',
+                            'bg-indigo-100 text-indigo-700', 'bg-violet-100 text-violet-700', 'bg-purple-100 text-purple-700', 'bg-fuchsia-100 text-fuchsia-700',
+                            'bg-pink-100 text-pink-700', 'bg-rose-100 text-rose-700'
+                          ].map(colorClass => (
+                            <button
+                              key={colorClass}
+                              onClick={() => handleColorChange(status, colorClass)}
+                              className={`w-5 h-5 rounded-full border border-slate-200 ${colorClass.split(' ')[0]} ${eventSettings.statusColors[status] === colorClass ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                              title={colorClass}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : activeTab === 'inventory' ? (
                 <div className="space-y-6">
                   <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6">
                     <p className="text-sm text-indigo-800 font-medium">Estás configurando el algoritmo de valoración de inventario.</p>
@@ -806,108 +968,135 @@ export default function WeddingRentalApp() {
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                   <Calendar className="text-indigo-600" /> Gestión de Eventos
                 </h2>
-                <button onClick={() => { resetEventForm(); setShowEventForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
-                  <Plus size={18} /> Crear Cotización
-                </button>
+                <div className="flex gap-3">
+                  <div className="bg-white border p-1 rounded-lg flex">
+                    <button
+                      onClick={() => setViewMode('card')}
+                      className={`p-2 rounded ${viewMode === 'card' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600'}`}
+                      title="Vista Tarjetas"
+                    >
+                      <Grid size={18} />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600'}`}
+                      title="Vista Lista"
+                    >
+                      <List size={18} />
+                    </button>
+                  </div>
+                  <button onClick={() => { resetEventForm(); setShowEventForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
+                    <Plus size={18} /> Crear Cotización
+                  </button>
+                </div>
               </div>
 
-              {/* SECCIÓN ACTIVOS (Cotizaciones, Confirmados, Pagos) */}
-              <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2"><Clock size={18} /> Eventos Activos</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {eventos.filter(e => ['Cotizado', 'Confirmado', 'Pago'].includes(e.estado)).map(evento => {
-                  // Lógica de Alertas
-                  const diasAntiguedad = Math.floor((new Date() - new Date(evento.fechaCotizacion)) / (1000 * 60 * 60 * 24));
-                  const diasParaEvento = Math.floor((new Date(evento.fecha) - new Date()) / (1000 * 60 * 60 * 24));
+              {viewMode === 'list' ? (
+                <EventListView
+                  events={eventos}
+                  onEdit={(ev) => { setEditingEvent(ev); setEventForm(ev); setShowEventForm(true); }}
+                  onDelete={handleDeleteEvent}
+                  formatCurrency={formatoCOP}
+                  settings={eventSettings}
+                />
+              ) : (
+                <>
+                  {/* SECCIÓN ACTIVOS (Cotizaciones, Confirmados, Pagos) */}
+                  <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2"><Clock size={18} /> Eventos Activos</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    {eventos.filter(e => ['Cotizado', 'Confirmado', 'Pago'].includes(e.estado)).map(evento => {
+                      // Lógica de Alertas
+                      const diasAntiguedad = Math.floor((new Date() - new Date(evento.fechaCotizacion)) / (1000 * 60 * 60 * 24));
+                      const diasParaEvento = Math.floor((new Date(evento.fecha) - new Date()) / (1000 * 60 * 60 * 24));
 
-                  let alerta = null;
-                  if (evento.estado === 'Cotizado') {
-                    if (diasAntiguedad > 7) alerta = { type: 'warning', text: `Cotización antigua (${diasAntiguedad} días)` };
-                    if (diasParaEvento < 15 && diasParaEvento >= 0) alerta = { type: 'urgent', text: `Evento cercano (${diasParaEvento} días)` };
-                  }
+                      let alerta = null;
+                      if (evento.estado === 'Cotizado') {
+                        if (diasAntiguedad > eventSettings.alerts.quoteWarning) alerta = { type: 'warning', text: `Cotización antigua (${diasAntiguedad} días)` };
+                        if (diasParaEvento < eventSettings.alerts.eventUrgent && diasParaEvento >= 0) alerta = { type: 'urgent', text: `Evento cercano (${diasParaEvento} días)` };
+                      }
 
-                  return (
-                    <div key={evento.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition relative overflow-hidden">
-                      {alerta && (
-                        <div className={`absolute top-0 left-0 w-1 h-full ${alerta.type === 'urgent' ? 'bg-red-500' : 'bg-yellow-400'}`}></div>
-                      )}
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-slate-800">{evento.nombreEvento || evento.cliente}</h3>
-                          <div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><Users size={12} /> Cli: {evento.cliente}</div>
-                          {evento.organizador && evento.organizador !== evento.cliente && (
-                            <div className="flex items-center gap-1 text-xs text-indigo-500 mt-1"><CheckSquare size={12} /> Org: {evento.organizador}</div>
+                      return (
+                        <div key={evento.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition relative overflow-hidden">
+                          {alerta && (
+                            <div className={`absolute top-0 left-0 w-1 h-full ${alerta.type === 'urgent' ? (eventSettings.alertColors?.urgent || 'bg-red-500') : (eventSettings.alertColors?.warning || 'bg-yellow-400')}`}></div>
                           )}
-                          <div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><MapPin size={12} /> {evento.lugar}</div>
-                          {evento.direccion && <div className="flex items-center gap-1 text-xs text-slate-400 ml-4">{evento.direccion}</div>}
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="font-bold text-lg text-slate-800">{evento.nombreEvento || evento.cliente}</h3>
+                              <div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><Users size={12} /> Cli: {evento.cliente}</div>
+                              {evento.organizador && evento.organizador !== evento.cliente && (
+                                <div className="flex items-center gap-1 text-xs text-indigo-500 mt-1"><CheckSquare size={12} /> Org: {evento.organizador}</div>
+                              )}
+                              <div className="flex items-center gap-1 text-xs text-slate-500 mt-1"><MapPin size={12} /> {evento.lugar}</div>
+                              {evento.direccion && <div className="flex items-center gap-1 text-xs text-slate-400 ml-4">{evento.direccion}</div>}
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold 
+                            ${eventSettings.statusColors[evento.estado] || 'bg-slate-100 text-slate-700'}`}>
+                                {evento.estado}
+                              </span>
+                              {evento.cotizacionEnviada && (
+                                <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
+                                  <FileText size={10} /> Enviada
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-3 bg-slate-50 p-2 rounded">
+                            <div>
+                              <span className="block font-medium text-slate-400">Cotizado:</span>
+                              {evento.fechaCotizacion || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="block font-medium text-slate-400">Evento:</span>
+                              <span className={diasParaEvento < 7 ? "text-red-500 font-bold" : ""}>{evento.fecha}</span>
+                            </div>
+                          </div>
+
+                          {alerta && (
+                            <div className={`flex items-center gap-2 text-xs font-bold mb-3 ${alerta.type === 'urgent' ? 'text-red-600' : 'text-yellow-600'}`}>
+                              <AlertCircle size={14} /> {alerta.text}
+                            </div>
+                          )}
+
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between text-sm"><span className="text-slate-500">Total Cliente</span><span className="font-bold text-indigo-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
+                          </div>
+                          <div className="mt-4 flex gap-2">
+                            <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="flex-1 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg text-sm font-medium transition">Ver Detalle</button>
+                            <button onClick={() => handleDeleteEvent(evento)} className="px-3 text-red-500 hover:bg-red-50 border border-red-200 rounded-lg transition" title="Eliminar Evento">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold 
-                            ${evento.estado === 'Confirmado' ? 'bg-blue-100 text-blue-700' :
-                              evento.estado === 'Pago' ? 'bg-emerald-100 text-emerald-700' :
-                                'bg-yellow-100 text-yellow-700'}`}>
+                      );
+                    })}
+                  </div>
+
+                  {/* SECCIÓN HISTÓRICO (Realizados y Pagados, Cancelados) */}
+                  <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2 border-t pt-6"><CheckSquare size={18} /> Histórico de Eventos</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
+                    {eventos.filter(e => ['Realizado & Pagado', 'Cancelado'].includes(e.estado)).map(evento => (
+                      <div key={evento.id} className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-bold text-lg text-slate-700">{evento.nombreEvento || evento.cliente}</h3>
+                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-1"><Users size={12} /> {evento.cliente}</div>
+                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-1"><Calendar size={12} /> {evento.fecha}</div>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold
+                      ${eventSettings.statusColors[evento.estado] || 'bg-slate-100 text-slate-700'}`}>
                             {evento.estado}
                           </span>
-                          {evento.cotizacionEnviada && (
-                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
-                              <FileText size={10} /> Enviada
-                            </span>
-                          )}
                         </div>
+                        <div className="flex justify-between text-sm mb-4"><span className="text-slate-500">Total Final</span><span className="font-bold text-slate-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
+                        <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="w-full border border-slate-300 text-slate-500 hover:bg-white py-1.5 rounded text-xs font-medium transition">Ver Detalle</button>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-3 bg-slate-50 p-2 rounded">
-                        <div>
-                          <span className="block font-medium text-slate-400">Cotizado:</span>
-                          {evento.fechaCotizacion || 'N/A'}
-                        </div>
-                        <div>
-                          <span className="block font-medium text-slate-400">Evento:</span>
-                          <span className={diasParaEvento < 7 ? "text-red-500 font-bold" : ""}>{evento.fecha}</span>
-                        </div>
-                      </div>
-
-                      {alerta && (
-                        <div className={`flex items-center gap-2 text-xs font-bold mb-3 ${alerta.type === 'urgent' ? 'text-red-600' : 'text-yellow-600'}`}>
-                          <AlertCircle size={14} /> {alerta.text}
-                        </div>
-                      )}
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm"><span className="text-slate-500">Total Cliente</span><span className="font-bold text-indigo-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
-                      </div>
-                      <div className="mt-4 flex gap-2">
-                        <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="flex-1 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg text-sm font-medium transition">Ver Detalle</button>
-                        <button onClick={() => handleDeleteEvent(evento)} className="px-3 text-red-500 hover:bg-red-50 border border-red-200 rounded-lg transition" title="Eliminar Evento">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* SECCIÓN HISTÓRICO (Realizados y Pagados, Cancelados) */}
-              <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2 border-t pt-6"><CheckSquare size={18} /> Histórico de Eventos</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
-                {eventos.filter(e => ['Realizado & Pagado', 'Cancelado'].includes(e.estado)).map(evento => (
-                  <div key={evento.id} className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-bold text-lg text-slate-700">{evento.nombreEvento || evento.cliente}</h3>
-                        <div className="flex items-center gap-1 text-xs text-slate-400 mt-1"><Users size={12} /> {evento.cliente}</div>
-                        <div className="flex items-center gap-1 text-xs text-slate-400 mt-1"><Calendar size={12} /> {evento.fecha}</div>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold
-                      ${evento.estado === 'Realizado & Pagado' ? 'bg-purple-100 text-purple-700' :
-                          'bg-red-100 text-red-700'}`}>
-                        {evento.estado}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-4"><span className="text-slate-500">Total Final</span><span className="font-bold text-slate-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
-                    <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="w-full border border-slate-300 text-slate-500 hover:bg-white py-1.5 rounded text-xs font-medium transition">Ver Detalle</button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
           )}
 
