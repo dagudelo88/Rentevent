@@ -149,13 +149,20 @@ const DEFAULT_EVENT_SETTINGS = {
   alertColors: {
     'warning': 'bg-yellow-400',
     'urgent': 'bg-red-500'
+  },
+  scoreColors: {
+    'joya': 'bg-green-100 text-green-800 border-green-200',
+    'bueno': 'bg-blue-100 text-blue-800 border-blue-200',
+    'regular': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'riesgo': 'bg-red-100 text-red-800 border-red-200',
+    'perdida': 'bg-red-200 text-red-900 border-red-300'
   }
 };
 
 // --- LÓGICA DE NEGOCIO ---
 
 // 1. Algoritmo de Puntuación (Meta-Score) RESTAURADO
-const calcularMetricas = (item, pesos) => {
+const calcularMetricas = (item, pesos, scoreColors = DEFAULT_EVENT_SETTINGS.scoreColors) => {
   // A. Rentabilidad Unitaria (Predictiva)
   const margenNeto = item.precioAlquiler - (item.costoTransporte || 0);
   const paybackEventos = margenNeto > 0 ? (item.costo / margenNeto) : 999;
@@ -201,11 +208,15 @@ const calcularMetricas = (item, pesos) => {
   // Clasificación Meta-Score
   let clasificacion = "";
   let colorClass = "";
-  if (margenNeto <= 0) { clasificacion = "⛔ Pérdida"; colorClass = "bg-red-200 text-red-900 border-red-300"; }
-  else if (weightedScore >= 80) { clasificacion = "💎 Joya"; colorClass = "bg-green-100 text-green-800 border-green-200"; }
-  else if (weightedScore >= 60) { clasificacion = "✅ Bueno"; colorClass = "bg-blue-100 text-blue-800 border-blue-200"; }
-  else if (weightedScore >= 40) { clasificacion = "⚠️ Regular"; colorClass = "bg-yellow-100 text-yellow-800 border-yellow-200"; }
-  else { clasificacion = "❌ Riesgo"; colorClass = "bg-red-100 text-red-800 border-red-200"; }
+
+  // FIX: Round score explicitly before classification to handle 79.6 -> 80
+  const finalScore = Math.round(weightedScore);
+
+  if (margenNeto <= 0) { clasificacion = "⛔ Pérdida"; colorClass = scoreColors.perdida; }
+  else if (finalScore >= 80) { clasificacion = "💎 Joya"; colorClass = scoreColors.joya; }
+  else if (finalScore >= 60) { clasificacion = "✅ Bueno"; colorClass = scoreColors.bueno; }
+  else if (finalScore >= 40) { clasificacion = "⚠️ Regular"; colorClass = scoreColors.regular; }
+  else { clasificacion = "❌ Riesgo"; colorClass = scoreColors.riesgo; }
 
   // E. Métricas Reales (Históricas)
   const ingresosTotales = (item.vecesAlquilado || 0) * item.precioAlquiler;
@@ -347,6 +358,10 @@ export default function WeddingRentalApp() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'list'
+  const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
+
+
+
 
   const [eventSettings, setEventSettings] = useState(() => {
     const saved = localStorage.getItem('eventSettings');
@@ -396,6 +411,59 @@ export default function WeddingRentalApp() {
       }
     };
     handleSaveSettings(newSettings);
+  };
+
+  const handleScoreColorChange = (status, colorClass) => {
+    const newSettings = {
+      ...eventSettings,
+      scoreColors: {
+        ...eventSettings.scoreColors,
+        [status]: colorClass
+      }
+    };
+    handleSaveSettings(newSettings);
+  };
+
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...items];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let aValue, bValue;
+
+        if (sortConfig.key === 'score') {
+          // Score is calculated on the fly, so we need to calculate it for sorting
+          const metricsA = calcularMetricas(a, pesos, eventSettings.scoreColors);
+          const metricsB = calcularMetricas(b, pesos, eventSettings.scoreColors);
+          aValue = Number(metricsA.score);
+          bValue = Number(metricsB.score);
+        } else if (sortConfig.key === 'paybackEventos') {
+          const metricsA = calcularMetricas(a, pesos, eventSettings.scoreColors);
+          const metricsB = calcularMetricas(b, pesos, eventSettings.scoreColors);
+          aValue = metricsA.paybackEventos === ">100" ? 999 : Number(metricsA.paybackEventos);
+          bValue = metricsB.paybackEventos === ">100" ? 999 : Number(metricsB.paybackEventos);
+        } else {
+          aValue = a[sortConfig.key];
+          bValue = b[sortConfig.key];
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [items, sortConfig, pesos, eventSettings.scoreColors]);
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
   };
 
   // Event Form State
@@ -572,6 +640,8 @@ export default function WeddingRentalApp() {
     const newItem = {
       id: editingItem ? editingItem.id : Date.now(),
       nombre: formData.get('nombre'),
+      imageUrl: formData.get('imageUrl'),
+      purchaseLink: formData.get('purchaseLink'),
       categoria: formData.get('categoria'),
       costo: Number(formData.get('costo')),
       precioAlquiler: Number(formData.get('precioAlquiler')),
@@ -582,7 +652,10 @@ export default function WeddingRentalApp() {
       facilidadTransporte: Number(formData.get('facilidadTransporte')),
       durabilidad: Number(formData.get('durabilidad')),
       vecesAlquilado: editingItem ? editingItem.vecesAlquilado : 0,
+      vecesAlquilado: editingItem ? editingItem.vecesAlquilado : 0,
       ingresosHistoricos: editingItem ? editingItem.ingresosHistoricos : 0,
+      imageUrl: formData.get('imageUrl'),
+      purchaseLink: formData.get('purchaseLink')
     };
 
     if (editingItem) setItems(prev => prev.map(i => i.id === editingItem.id ? newItem : i));
@@ -619,7 +692,7 @@ export default function WeddingRentalApp() {
 
         <nav className="flex-1 py-6 px-3 space-y-2">
           {[
-            { id: 'inventory', label: 'Inventario', icon: Package },
+            { id: 'inventory', label: 'Product ranking', icon: Package },
             { id: 'events', label: 'Eventos', icon: Calendar },
             { id: 'clients', label: 'Clientes', icon: Users },
           ].map(item => (
@@ -806,6 +879,45 @@ export default function WeddingRentalApp() {
                     <span className="text-slate-500">Peso Total Asignado:</span>
                     <span className={`font-bold text-lg ${sumaPesos === 100 ? 'text-emerald-600' : 'text-orange-500'}`}>{sumaPesos}%</span>
                   </div>
+
+                  {/* CUSTOM COLORS FOR META SCORE */}
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b pb-2 pt-4">
+                    <Package size={18} className="text-indigo-500" /> Colores Meta Score
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'joya', label: '💎 Joya (80-100)' },
+                      { key: 'bueno', label: '✅ Bueno (60-79)' },
+                      { key: 'regular', label: '⚠️ Regular (40-59)' },
+                      { key: 'riesgo', label: '❌ Riesgo (<40)' },
+                      { key: 'perdida', label: '⛔ Pérdida (Margen -)' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-slate-500">{item.label}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            'bg-slate-100 text-slate-700 border-slate-200',
+                            'bg-red-100 text-red-800 border-red-200', 'bg-red-200 text-red-900 border-red-300',
+                            'bg-orange-100 text-orange-800 border-orange-200', 'bg-amber-100 text-amber-800 border-amber-200',
+                            'bg-yellow-100 text-yellow-800 border-yellow-200', 'bg-lime-100 text-lime-800 border-lime-200',
+                            'bg-green-100 text-green-800 border-green-200', 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                            'bg-teal-100 text-teal-800 border-teal-200', 'bg-cyan-100 text-cyan-800 border-cyan-200',
+                            'bg-sky-100 text-sky-800 border-sky-200', 'bg-blue-100 text-blue-800 border-blue-200',
+                            'bg-indigo-100 text-indigo-800 border-indigo-200', 'bg-violet-100 text-violet-800 border-violet-200',
+                            'bg-purple-100 text-purple-800 border-purple-200', 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+                            'bg-pink-100 text-pink-800 border-pink-200', 'bg-rose-100 text-rose-800 border-rose-200'
+                          ].map(colorClass => (
+                            <button
+                              key={colorClass}
+                              onClick={() => handleScoreColorChange(item.key, colorClass)}
+                              className={`w-5 h-5 rounded-full border ${colorClass.split(' ')[2]} ${colorClass.split(' ')[0]} ${eventSettings.scoreColors?.[item.key] === colorClass ? 'ring-2 ring-offset-1 ring-indigo-500' : ''}`}
+                              title={colorClass}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -856,7 +968,7 @@ export default function WeddingRentalApp() {
             <div className="animate-in fade-in duration-300">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <Package className="text-indigo-600" /> Inventario & Rentabilidad
+                  <Package className="text-indigo-600" /> Product ranking
                 </h2>
                 <button onClick={() => { setEditingItem(null); setShowItemForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
                   <Plus size={18} /> Nuevo Ítem
@@ -869,23 +981,56 @@ export default function WeddingRentalApp() {
                   <table className="w-full text-left text-sm min-w-[800px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-xs">
                       <tr>
-                        <th className="p-4">Producto</th>
-                        <th className="p-4 text-center">Unitario (COP)</th>
-                        <th className="p-4 text-center">Logística (1-10)</th>
-                        <th className="p-4 text-center bg-indigo-50/50">Meta Score</th>
-                        <th className="p-4 text-center">ROI Real</th>
+                        <th className="p-4 cursor-pointer hover:bg-slate-100 transition" onClick={() => requestSort('nombre')}>
+                          <div className="flex items-center gap-1">Producto {sortConfig.key === 'nombre' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</div>
+                        </th>
+                        <th className="p-4 text-center cursor-pointer hover:bg-slate-100 transition" onClick={() => requestSort('precioAlquiler')}>
+                          <div className="flex items-center justify-center gap-1">Unitario {sortConfig.key === 'precioAlquiler' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</div>
+                        </th>
+                        <th className="p-4 text-center cursor-pointer hover:bg-slate-100 transition" onClick={() => requestSort('costoTransporte')}>
+                          <div className="flex items-center justify-center gap-1">Logística {sortConfig.key === 'costoTransporte' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</div>
+                        </th>
+                        <th className="p-4 text-center bg-indigo-50/50 cursor-pointer hover:bg-indigo-100 transition" onClick={() => requestSort('score')}>
+                          <div className="flex items-center justify-center gap-1">Meta Score {sortConfig.key === 'score' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</div>
+                        </th>
+                        <th className="p-4 text-center cursor-pointer hover:bg-slate-100 transition" onClick={() => requestSort('paybackEventos')}>
+                          <div className="flex items-center justify-center gap-1">Est. Payback {sortConfig.key === 'paybackEventos' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</div>
+                        </th>
                         <th className="p-4 text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {items.map(item => {
-                        const metrics = calcularMetricas(item, pesos);
+                      {sortedItems.map(item => {
+                        const metrics = calcularMetricas(item, pesos, eventSettings.scoreColors);
                         return (
                           <tr key={item.id} className="hover:bg-slate-50 transition group">
                             <td className="p-4">
-                              <div className="font-bold text-slate-800 text-base">{item.nombre}</div>
-                              <div className="text-slate-500 text-xs bg-slate-100 inline-block px-2 rounded mt-1">{item.categoria}</div>
-                              <div className="text-slate-400 text-xs mt-1">Stock: {item.cantidad} | Rotación: {item.rotacion}/10</div>
+                              <div className="flex items-center gap-3">
+                                {item.imageUrl ? (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.nombre}
+                                    className="w-12 h-12 rounded-lg object-cover bg-slate-100 border border-slate-200"
+                                    onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
+                                    <Package size={20} />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-bold text-slate-800 text-base flex items-center gap-2">
+                                    {item.nombre}
+                                    {item.purchaseLink && (
+                                      <a href={item.purchaseLink} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-600" title="Ver Producto">
+                                        <TrendingUp size={14} className="transform rotate-45" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="text-slate-500 text-xs bg-slate-100 inline-block px-2 rounded mt-1">{item.categoria}</div>
+                                  <div className="text-slate-400 text-xs mt-1">Rotación: {item.rotacion}/10</div>
+                                </div>
+                              </div>
                             </td>
                             <td className="p-4 text-center">
                               <div className="space-y-1">
@@ -908,16 +1053,12 @@ export default function WeddingRentalApp() {
                               </div>
                               <div className="text-[9px] text-slate-400 mt-1">Payback: {metrics.paybackEventos} ev.</div>
                             </td>
-                            <td className="p-4 w-40">
-                              <div className="w-full bg-slate-200 rounded-full h-2 mb-1 overflow-hidden">
-                                <div className={`h-2 rounded-full ${metrics.yaSePago ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${metrics.porcentajeRecuperado}%` }}></div>
-                              </div>
-                              <div className="flex justify-between text-[10px] mb-1">
-                                <span>{metrics.porcentajeRecuperado.toFixed(0)}%</span>
-                                {metrics.yaSePago ? <span className="text-green-600 font-bold">PAGADO</span> : <span className="text-slate-400">En proceso</span>}
-                              </div>
-                              <div className="text-[10px] text-slate-500 text-center bg-slate-100 rounded px-1">
-                                Uso: {item.vecesAlquilado} veces
+                            <td className="p-4 text-center w-40">
+                              <div className="flex flex-col items-center justify-center">
+                                <div className={`text-sm font-bold ${metrics.paybackEventos <= 5 ? 'text-emerald-600' : metrics.paybackEventos <= 10 ? 'text-blue-600' : 'text-slate-500'}`}>
+                                  {metrics.paybackEventos} <span className="text-xs font-normal text-slate-400">eventos</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">Para recuperar inversión</div>
                               </div>
                             </td>
                             <td className="p-4 text-right">
@@ -1173,10 +1314,22 @@ export default function WeddingRentalApp() {
                 <form onSubmit={handleSaveItem} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="col-span-2"><label className="text-xs font-bold text-slate-500 uppercase">Nombre</label><input required name="nombre" defaultValue={editingItem?.nombre} className="w-full border p-2 rounded" placeholder="Ej: Silla Tiffany" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase">Categoría</label><select name="categoria" defaultValue={editingItem?.categoria || CATEGORIAS[0]} className="w-full border p-2 rounded">{CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                  <div><label className="text-xs font-bold text-slate-500 uppercase">Cantidad (Stock)</label><input type="number" name="cantidad" required defaultValue={editingItem?.cantidad || 1} className="w-full border p-2 rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase">Costo Compra</label><input type="number" name="costo" required defaultValue={editingItem?.costo} className="w-full border p-2 rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase">Precio Alquiler</label><input type="number" name="precioAlquiler" required defaultValue={editingItem?.precioAlquiler} className="w-full border p-2 rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase">Costo Logística Unit.</label><input type="number" name="costoTransporte" defaultValue={editingItem?.costoTransporte || 0} className="w-full border p-2 rounded" /></div>
+
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-slate-500 uppercase">Link de Compra</label><input type="url" name="purchaseLink" defaultValue={editingItem?.purchaseLink} className="w-full border p-2 rounded" placeholder="https://..." /></div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase">URL Imagen</label>
+                      <div className="flex gap-2">
+                        <input type="url" name="imageUrl" defaultValue={editingItem?.imageUrl} className="w-full border p-2 rounded" placeholder="https://..." />
+                        {editingItem?.imageUrl && (
+                          <img src={editingItem.imageUrl} alt="Preview" className="w-10 h-10 rounded object-cover border border-slate-200 bg-slate-50" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   {/* SLIDERS PARA ITEM */}
                   <div className="col-span-2 bg-slate-50 p-4 rounded-lg mt-2">
@@ -1184,7 +1337,7 @@ export default function WeddingRentalApp() {
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { n: 'rotacion', l: 'Rotación (Demanda)' }, { n: 'almacenamiento', l: 'Facilidad Almacén' },
-                        { n: 'facilidadTransporte', l: 'Facilidad Carga' }, { n: 'durabilidad', l: 'Durabilidad' }
+                        { n: 'facilidadTransporte', l: 'Facilidad de Transporte' }, { n: 'durabilidad', l: 'Durabilidad' }
                       ].map(f => (
                         <div key={f.n}>
                           <div className="flex justify-between items-center mb-1">
