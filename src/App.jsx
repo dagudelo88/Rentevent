@@ -994,17 +994,55 @@ export default function WeddingRentalApp() {
   const handleSaveRealInventoryItem = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const cantNueva = Number(formData.get('cantidad'));
+    const costoNuevo = Number(formData.get('costo'));
+    const hoy = new Date().toISOString();
+
+    let nuevoHistorial = editingRealInventoryItem ? (editingRealInventoryItem.historialAjustes || []) : [];
+    if (editingRealInventoryItem) {
+      const cantAnterior = editingRealInventoryItem.cantidad || 0;
+      const dif = cantNueva - cantAnterior;
+      if (dif !== 0) {
+        let motivo = "Ajuste manual (Compra/Entrada)";
+        if (dif < 0) {
+          const promptMotivo = window.prompt("Motivo de la disminución de inventario (Ej: Daño, Pérdida, Retiro, Deterioro):");
+          if (promptMotivo === null || promptMotivo.trim() === '') {
+            return; // Cancel the save process if user cancels prompt or leaves it empty
+          }
+          motivo = `Salida: ${promptMotivo.trim()}`;
+        }
+
+        nuevoHistorial = [
+          {
+            fecha: hoy,
+            cambio: dif,
+            cantidadFinal: cantNueva,
+            motivo: motivo
+          },
+          ...nuevoHistorial
+        ];
+      }
+    } else {
+      if (cantNueva > 0) {
+        nuevoHistorial = [{ fecha: hoy, cambio: cantNueva, cantidadFinal: cantNueva, motivo: "Inventario Inicial" }];
+      }
+    }
+
     const newItem = {
       id: editingRealInventoryItem ? editingRealInventoryItem.id : Date.now(),
       nombre: formData.get('nombre'),
       categoria: formData.get('categoria'),
-      cantidad: Number(formData.get('cantidad')),
-      costo: Number(formData.get('costo')),
+      marca: formData.get('marca') || '',
+      linkCompra: formData.get('linkCompra') || '',
+      imagenUrl: formData.get('imagenUrl') || '',
+      cantidad: cantNueva,
+      costo: costoNuevo,
       precioAlquiler: Number(formData.get('precioAlquiler')),
       costoTransporte: Number(formData.get('costoTransporte')),
+      fechaCreacion: editingRealInventoryItem ? (editingRealInventoryItem.fechaCreacion || hoy) : hoy,
+      fechaModificacion: hoy,
+      historialAjustes: nuevoHistorial,
       costo_total_adquisicion: (() => {
-        const cantNueva = Number(formData.get('cantidad'));
-        const costoNuevo = Number(formData.get('costo'));
         if (editingRealInventoryItem) {
           const cantAnterior = editingRealInventoryItem.cantidad || 0;
           const dif = cantNueva - cantAnterior;
@@ -1547,10 +1585,21 @@ export default function WeddingRentalApp() {
                       }
 
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50">
-                          <td className="p-4">
-                            <span className="font-bold text-slate-800">{item.nombre}</span>
-                            <div className="text-xs text-slate-500">{item.categoria}</div>
+                        <tr key={item.id} className="hover:bg-slate-50 transition">
+                          <td className="p-4 flex items-center gap-3 min-w-[200px]">
+                            {item.imagenUrl ? (
+                              <div className="w-10 h-10 rounded overflow-hidden bg-slate-100 flex-shrink-0 border">
+                                <img src={item.imagenUrl} alt="Thumb" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></div>'; }} />
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center flex-shrink-0 border text-slate-400">
+                                <Box size={16} />
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-bold text-slate-800">{item.nombre}</span>
+                              <div className="text-xs text-slate-500">{item.categoria}{item.marca ? <span className="text-indigo-600 font-medium"> • {item.marca}</span> : ''}</div>
+                            </div>
                           </td>
                           <td className="p-4 text-center font-bold text-slate-800 bg-slate-50">{item.cantidad}</td>
                           <td className="p-4 text-center font-bold text-orange-600 bg-orange-50">{reserved}</td>
@@ -2235,11 +2284,30 @@ export default function WeddingRentalApp() {
                   <label className="text-xs font-bold text-slate-500 uppercase">Nombre</label>
                   <input required name="nombre" defaultValue={editingRealInventoryItem?.nombre} className="w-full border p-2 rounded" placeholder="Ej: Silla Tiffany" />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
                   <select name="categoria" defaultValue={editingRealInventoryItem?.categoria || CATEGORIAS[0]} className="w-full border p-2 rounded">
                     {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Marca / Fabricante</label>
+                  <input name="marca" defaultValue={editingRealInventoryItem?.marca} className="w-full border p-2 rounded" placeholder="Ej: EventDecor" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Link de Compra / Referencia</label>
+                  <input name="linkCompra" defaultValue={editingRealInventoryItem?.linkCompra} className="w-full border p-2 rounded text-indigo-600" placeholder="https://..." />
+                </div>
+                <div className="col-span-2 flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">URL de Imagen (Thumbnail)</label>
+                    <input name="imagenUrl" defaultValue={editingRealInventoryItem?.imagenUrl} className="w-full border p-2 rounded text-slate-600" placeholder="Ej: https://imgur.com/foto.jpg" />
+                  </div>
+                  {editingRealInventoryItem?.imagenUrl && (
+                    <div className="w-16 h-16 rounded border flex items-center justify-center overflow-hidden bg-slate-50 flex-shrink-0">
+                      <img src={editingRealInventoryItem.imagenUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase">Cantidad Total</label>
@@ -2291,6 +2359,33 @@ export default function WeddingRentalApp() {
                         })()}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {editingRealInventoryItem && editingRealInventoryItem.historialAjustes && (
+                  <div className="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2">
+                    <h4 className="text-xs font-bold text-slate-600 uppercase mb-3">Historial de Ajustes (Inventario)</h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                      {editingRealInventoryItem.historialAjustes.map((ajuste, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs border-b border-slate-200 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                          <span className="text-slate-400 w-24">{new Date(ajuste.fecha).toLocaleDateString()}</span>
+                          <span className="text-slate-600 flex-1 truncate px-2" title={ajuste.motivo}>{ajuste.motivo}</span>
+                          <div className="text-right min-w-[60px]">
+                            <span className={`font-bold ${ajuste.cambio > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              {ajuste.cambio > 0 ? '+' : ''}{ajuste.cambio}
+                            </span>
+                            <span className="text-slate-400 ml-1 text-[10px]">({ajuste.cantidadFinal})</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {editingRealInventoryItem && (
+                  <div className="col-span-2 text-[10px] text-slate-400 flex justify-between px-1 mt-2 font-medium">
+                    <span>Creado: {editingRealInventoryItem.fechaCreacion ? new Date(editingRealInventoryItem.fechaCreacion).toLocaleString() : 'N/A'}</span>
+                    <span>Modificado: {editingRealInventoryItem.fechaModificacion ? new Date(editingRealInventoryItem.fechaModificacion).toLocaleString() : 'N/A'}</span>
                   </div>
                 )}
 
