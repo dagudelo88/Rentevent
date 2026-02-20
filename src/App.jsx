@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus, Trash2, Edit2, Save, X, Download, TrendingUp, Package, Truck,
   AlertCircle, Settings, RotateCcw, Calendar, Users, FileText, CheckCircle,
-  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid
+  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid, Box
 } from 'lucide-react';
 import EventListView from './components/EventListView';
 
@@ -47,6 +47,29 @@ const DATOS_INICIALES = [
   { id: 12, nombre: "Centro Mesa Floral Artificial", categoria: "Decoración & Ambientación", costo: 120000, precioAlquiler: 35000, costoTransporte: 3000, rotacion: 5, almacenamiento: 4, facilidadTransporte: 6, durabilidad: 8, cantidad: 20, vecesAlquilado: 8, ingresosHistoricos: 5600000 },
   { id: 13, nombre: "Silla Crossback Madera", categoria: "Mobiliario (Sillas/Mesas)", costo: 110000, precioAlquiler: 7500, costoTransporte: 600, rotacion: 8, almacenamiento: 6, facilidadTransporte: 7, durabilidad: 8, cantidad: 150, vecesAlquilado: 10, ingresosHistoricos: 11250000 },
   { id: 14, nombre: "Plato Principal Loza Blanca", categoria: "Menaje & Vajilla", costo: 18000, precioAlquiler: 2000, costoTransporte: 100, rotacion: 9, almacenamiento: 8, facilidadTransporte: 7, durabilidad: 5, cantidad: 350, vecesAlquilado: 22, ingresosHistoricos: 15400000 },
+];
+
+const REAL_INVENTORY_INITIAL = [
+  { id: 1, nombre: "Silla Tiffany Dorada", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 200, costo: 85000, precioAlquiler: 5500, costoTransporte: 500 },
+  { id: 2, nombre: "Silla Tiffany Plateada", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 150, costo: 85000, precioAlquiler: 5500, costoTransporte: 500 },
+  { id: 3, nombre: "Silla Crossback Madera", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 120, costo: 110000, precioAlquiler: 7500, costoTransporte: 600 },
+  { id: 4, nombre: "Mesa Redonda 1.50m (10 pax)", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 30, costo: 250000, precioAlquiler: 35000, costoTransporte: 12000 },
+  { id: 5, nombre: "Mesa Rectangular 2.40m", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 15, costo: 300000, precioAlquiler: 45000, costoTransporte: 15000 },
+  { id: 6, nombre: "Mesa Madera Rústica", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 20, costo: 450000, precioAlquiler: 65000, costoTransporte: 15000 },
+  { id: 7, nombre: "Sala Lounge Blanca (8 pax)", categoria: "Lounge & Salas", cantidad: 6, costo: 1800000, precioAlquiler: 400000, costoTransporte: 80000 },
+  { id: 8, nombre: "Sala Lounge Chester", categoria: "Lounge & Salas", cantidad: 4, costo: 2500000, precioAlquiler: 550000, costoTransporte: 90000 },
+  { id: 9, nombre: "Mantel Blanco Jacquard", categoria: "Mantelería & Textiles", cantidad: 60, costo: 60000, precioAlquiler: 15000, costoTransporte: 2000 },
+  { id: 10, nombre: "Servilleta Tela Sand", categoria: "Mantelería & Textiles", cantidad: 500, costo: 8000, precioAlquiler: 1500, costoTransporte: 100 },
+  { id: 11, nombre: "Camino de Mesa", categoria: "Mantelería & Textiles", cantidad: 80, costo: 25000, precioAlquiler: 8000, costoTransporte: 500 },
+  { id: 12, nombre: "Plato Base Rattán", categoria: "Menaje & Vajilla", cantidad: 180, costo: 25000, precioAlquiler: 3500, costoTransporte: 100 },
+  { id: 13, nombre: "Plato Principal Loza Blanca", categoria: "Menaje & Vajilla", cantidad: 400, costo: 18000, precioAlquiler: 2000, costoTransporte: 100 },
+  { id: 14, nombre: "Copa Agua Cristal", categoria: "Menaje & Vajilla", cantidad: 400, costo: 12000, precioAlquiler: 1200, costoTransporte: 50 },
+  { id: 15, nombre: "Copa Vino Cristal", categoria: "Menaje & Vajilla", cantidad: 400, costo: 12000, precioAlquiler: 1200, costoTransporte: 50 },
+  { id: 16, nombre: "Set Cubertería Dorada", categoria: "Menaje & Vajilla", cantidad: 250, costo: 45000, precioAlquiler: 4500, costoTransporte: 50 },
+  { id: 17, nombre: "Carpa 10x10 Blanca", categoria: "Estructuras & Carpas", cantidad: 3, costo: 5000000, precioAlquiler: 800000, costoTransporte: 200000 },
+  { id: 18, nombre: "Pista Baile LED (módulo)", categoria: "Iluminación & Audio", cantidad: 50, costo: 350000, precioAlquiler: 60000, costoTransporte: 5000 },
+  { id: 19, nombre: "Centro Mesa Floral Artif.", categoria: "Decoración & Ambientación", cantidad: 25, costo: 120000, precioAlquiler: 35000, costoTransporte: 3000 },
+  { id: 20, nombre: "Candelabro Dorado 5 Brazos", categoria: "Decoración & Ambientación", cantidad: 15, costo: 180000, precioAlquiler: 40000, costoTransporte: 2000 }
 ];
 
 const EVENTOS_INICIALES = [
@@ -321,7 +344,7 @@ export default function WeddingRentalApp() {
   });
 
   const [eventos, setEventos] = useState(() => {
-    const saved = localStorage.getItem('wedding_events_v4');
+    const saved = localStorage.getItem('wedding_events_v5');
     let loadedEvents = saved ? JSON.parse(saved) : EVENTOS_INICIALES;
 
     // MIGRACIÓN: Actualizar estados antiguos
@@ -414,6 +437,24 @@ export default function WeddingRentalApp() {
   const [clientToDelete, setClientToDelete] = useState(null);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'list'
   const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
+  const [realInventoryItems, setRealInventoryItems] = useState(() => {
+    const saved = localStorage.getItem('wedding_real_inventory_v2');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.length > 0 ? parsed : REAL_INVENTORY_INITIAL;
+    }
+    return REAL_INVENTORY_INITIAL;
+  });
+  // Real Inventory States
+  const [realInventorySearch, setRealInventorySearch] = useState('');
+  const [realInventoryDate, setRealInventoryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [showRealInventoryForm, setShowRealInventoryForm] = useState(false);
+  const [editingRealInventoryItem, setEditingRealInventoryItem] = useState(null);
+  const [deleteRealInventoryItemModalOpen, setDeleteRealInventoryItemModalOpen] = useState(false);
+  const [realInventoryItemToDelete, setRealInventoryItemToDelete] = useState(null);
+
+  useEffect(() => { localStorage.setItem('wedding_real_inventory_v2', JSON.stringify(realInventoryItems)); }, [realInventoryItems]);
+
 
 
 
@@ -522,6 +563,7 @@ export default function WeddingRentalApp() {
   };
 
   // Event Form State
+  const [eventItemSearch, setEventItemSearch] = useState('');
   const [eventForm, setEventForm] = useState({
     id: null, nombreEvento: '',
     clienteId: '', cliente: '', clienteDocumento: '', clienteTelefono: '', clienteEmail: '',
@@ -548,7 +590,7 @@ export default function WeddingRentalApp() {
 
   // Persistencia
   useEffect(() => { localStorage.setItem('wedding_inventory_v8', JSON.stringify(items)); }, [items]);
-  useEffect(() => { localStorage.setItem('wedding_events_v4', JSON.stringify(eventos)); }, [eventos]);
+  useEffect(() => { localStorage.setItem('wedding_events_v5', JSON.stringify(eventos)); }, [eventos]);
   useEffect(() => { localStorage.setItem('wedding_clientes_v1', JSON.stringify(clientes)); }, [clientes]);
   useEffect(() => { localStorage.setItem('wedding_clientes_v1', JSON.stringify(clientes)); }, [clientes]);
   useEffect(() => { localStorage.setItem('wedding_weights_v2', JSON.stringify(pesos)); }, [pesos]);
@@ -591,10 +633,103 @@ export default function WeddingRentalApp() {
   const resetWeights = () => setPesos(DEFAULT_WEIGHTS);
   const sumaPesos = Object.values(pesos).reduce((a, b) => a + b, 0);
 
+  // --- LÓGICA DE DISPONIBILIDAD (NEW INVENTORY) ---
+  const calculateAvailability = (itemId, eventoFecha, eventoFechaRecogida, excludeEventId = null) => {
+    // Si no hay ítem, 0. Si no hay fecha, no podemos calcular reservas, retornar 0 o manejarlo abajo.
+    if (!itemId) return 0;
+
+    // Buscar el ítem en el inventario real
+    const inventoryItem = realInventoryItems.find(i => i.id == itemId); // Loose equality
+    if (!inventoryItem) return 0;
+
+    const totalStock = inventoryItem.cantidad;
+
+    // Función auxiliar para normalizar fechas (ignorar horas, solo comparar fechas)
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      if (dateStr instanceof Date) return new Date(dateStr).setHours(0, 0, 0, 0);
+
+      try {
+        // Chequear formato DD/MM/YYYY (común en Colombia)
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            // Asumiendo DD/MM/YYYY
+            return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+          }
+        }
+
+        // Asegurar formato YYYY-MM-DD para evitar problemas de timezone
+        const parts = dateStr.split('-');
+        if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+        return new Date(dateStr).getTime();
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const startA = normalizeDate(eventoFecha);
+    // Si la fecha es inválida o no existe, retornar todo el stock disponible (Fail Open)
+    if (!startA && startA !== 0) return totalStock;
+
+    // Si no hay fecha recogida, asumimos el mismo día (alquiler de 1 día)
+    let endA = normalizeDate(eventoFechaRecogida);
+    if (!endA || endA < startA) endA = startA;
+
+    let reservedQuantity = 0;
+
+    eventos.forEach(ev => {
+      // Excluir el evento que estamos editando
+      if (excludeEventId && ev.id == excludeEventId) return;
+
+      const estado = ev.estado ? ev.estado.trim() : '';
+
+      // Solo contar eventos que reservan stock
+      if (['Confirmado', 'Pago', 'Realizado & Pagado'].includes(estado)) {
+        const startB = normalizeDate(ev.fecha);
+        let endB = normalizeDate(ev.fechaRecogida);
+        if (!startB) return; // Skip invalid events
+        if (!endB || endB < startB) endB = startB;
+
+        // Chequear solapamiento (A se solapa con B)
+        // Solapamiento: StartA <= EndB AND EndA >= StartB
+        if (startA <= endB && endA >= startB) {
+          // Loose equality per si acaso itemsSeleccionados tiene string ids
+          const itemInEvent = ev.itemsSeleccionados.find(i => i.itemId == itemId);
+          if (itemInEvent) {
+            reservedQuantity += Number(itemInEvent.cantidad);
+          }
+        }
+      }
+    });
+
+    return Math.max(0, totalStock - reservedQuantity);
+  };
+
   // --- HANDLERS (Eventos) ---
-  const handleSaveEvent = () => {
+  const handleSaveEvent = (e) => {
+    // Check if e is present (form submit) or if called manually
+    if (e && e.preventDefault) e.preventDefault();
+
+    if (!eventForm.nombreEvento || !eventForm.clienteId || !eventForm.fecha) {
+      alert("Por favor completa los campos obligatorios (*)");
+      return;
+    }
+
+    // VALIDACIÓN DE STOCK (Solo si el estado reserva stock)
+    if (['Confirmado', 'Pago', 'Realizado & Pagado'].includes(eventForm.estado)) {
+      for (const item of eventForm.itemsSeleccionados) {
+        const available = calculateAvailability(item.itemId, eventForm.fecha, eventForm.fechaRecogida, editingEvent?.id);
+        if (Number(item.cantidad) > available) {
+          if (!confirm(`El ítem "${item.nombre}" supera la disponibilidad para estas fechas.\nSolicitado: ${item.cantidad}\nDisponible: ${available}\n\n¿Deseas guardar de todos modos (Sobreventa)?`)) {
+            return; // Cancelar guardado
+          }
+        }
+      }
+    }
+
     const totalAlquiler = eventForm.itemsSeleccionados.reduce((acc, i) => acc + (i.precioUnitario * i.cantidad), 0);
-    const totalGeneral = totalAlquiler + Number(eventForm.costoTransporte);
+    const totalGeneral = totalAlquiler + Number(eventForm.costoTransporte) + Number(eventForm.depositoSeguridad);
 
     const nuevoEvento = {
       ...eventForm,
@@ -607,11 +742,14 @@ export default function WeddingRentalApp() {
 
     if (editingEvent) {
       const eventoAnterior = eventos.find(e => e.id === editingEvent.id);
-      if (nuevoEvento.estado === 'Realizado' && eventoAnterior.estado !== 'Realizado') {
-        actualizarUsoInventario(nuevoEvento.itemsSeleccionados);
+      if (nuevoEvento.estado === 'Realizado & Pagado' && eventoAnterior.estado !== 'Realizado & Pagado') {
+        actualizarRentabilidadInventarioReal(nuevoEvento.itemsSeleccionados);
       }
       setEventos(prev => prev.map(e => e.id === editingEvent.id ? nuevoEvento : e));
     } else {
+      if (nuevoEvento.estado === 'Realizado & Pagado') {
+        actualizarRentabilidadInventarioReal(nuevoEvento.itemsSeleccionados);
+      }
       setEventos(prev => [...prev, nuevoEvento]);
     }
 
@@ -620,14 +758,16 @@ export default function WeddingRentalApp() {
     resetEventForm();
   };
 
-  const actualizarUsoInventario = (itemsAlquilados) => {
-    setItems(prevItems => prevItems.map(invItem => {
+
+
+  const actualizarRentabilidadInventarioReal = (itemsAlquilados) => {
+    setRealInventoryItems(prevItems => prevItems.map(invItem => {
       const alquilado = itemsAlquilados.find(i => i.itemId === invItem.id);
       if (alquilado) {
         return {
           ...invItem,
-          vecesAlquilado: (invItem.vecesAlquilado || 0) + 1,
-          ingresosHistoricos: (invItem.ingresosHistoricos || 0) + (alquilado.precioUnitario * alquilado.cantidad)
+          veces_alquilado_total: (invItem.veces_alquilado_total || 0) + Number(alquilado.cantidad),
+          ingresos_totales: (invItem.ingresos_totales || 0) + (Number(alquilado.precioUnitario) * Number(alquilado.cantidad))
         };
       }
       return invItem;
@@ -635,16 +775,28 @@ export default function WeddingRentalApp() {
   };
 
   const addItemToEvent = (item, qty) => {
+    const quantity = Number(qty);
+    if (quantity < 1) return;
+
     const existing = eventForm.itemsSeleccionados.find(i => i.itemId === item.id);
     if (existing) {
       setEventForm(prev => ({
         ...prev,
-        itemsSeleccionados: prev.itemsSeleccionados.map(i => i.itemId === item.id ? { ...i, cantidad: Number(qty) } : i)
+        itemsSeleccionados: prev.itemsSeleccionados.map(i => i.itemId === item.id ? { ...i, cantidad: quantity } : i)
       }));
     } else {
+      // Buscar info actualizada en RealInventory si existe, sino usar la info pasada (legacy/ranking fallback)
+      const inventoryItem = realInventoryItems.find(r => r.id === item.id);
+      const itemToAdd = inventoryItem || item;
+
       setEventForm(prev => ({
         ...prev,
-        itemsSeleccionados: [...prev.itemsSeleccionados, { itemId: item.id, nombre: item.nombre, cantidad: Number(qty), precioUnitario: item.precioAlquiler }]
+        itemsSeleccionados: [...prev.itemsSeleccionados, {
+          itemId: itemToAdd.id,
+          nombre: itemToAdd.nombre,
+          cantidad: quantity,
+          precioUnitario: itemToAdd.precioAlquiler
+        }]
       }));
     }
   };
@@ -654,6 +806,7 @@ export default function WeddingRentalApp() {
   };
 
   const resetEventForm = () => {
+    setEventItemSearch('');
     setEventForm({
       id: null, nombreEvento: '',
       clienteId: '', cliente: '', clienteDocumento: '', clienteTelefono: '', clienteEmail: '',
@@ -837,6 +990,59 @@ export default function WeddingRentalApp() {
     }
   };
 
+  // --- HANDLERS (Real Inventory) ---
+  const handleSaveRealInventoryItem = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const newItem = {
+      id: editingRealInventoryItem ? editingRealInventoryItem.id : Date.now(),
+      nombre: formData.get('nombre'),
+      categoria: formData.get('categoria'),
+      cantidad: Number(formData.get('cantidad')),
+      costo: Number(formData.get('costo')),
+      precioAlquiler: Number(formData.get('precioAlquiler')),
+      costoTransporte: Number(formData.get('costoTransporte')),
+      costo_total_adquisicion: (() => {
+        const cantNueva = Number(formData.get('cantidad'));
+        const costoNuevo = Number(formData.get('costo'));
+        if (editingRealInventoryItem) {
+          const cantAnterior = editingRealInventoryItem.cantidad || 0;
+          const dif = cantNueva - cantAnterior;
+          const historico = editingRealInventoryItem.costo_total_adquisicion || (cantAnterior * editingRealInventoryItem.costo) || 0;
+          if (dif > 0) {
+            return historico + (dif * costoNuevo); // Compra
+          }
+          return historico;
+        }
+        return cantNueva * costoNuevo;
+      })(),
+      veces_alquilado_total: editingRealInventoryItem ? (editingRealInventoryItem.veces_alquilado_total || 0) : 0,
+      ingresos_totales: editingRealInventoryItem ? (editingRealInventoryItem.ingresos_totales || 0) : 0,
+    };
+
+    if (editingRealInventoryItem) {
+      setRealInventoryItems(prev => prev.map(i => i.id === editingRealInventoryItem.id ? newItem : i));
+    } else {
+      setRealInventoryItems(prev => [...prev, newItem]);
+    }
+
+    setShowRealInventoryForm(false);
+    setEditingRealInventoryItem(null);
+  };
+
+  const handleDeleteRealInventoryItem = (item) => {
+    setRealInventoryItemToDelete(item);
+    setDeleteRealInventoryItemModalOpen(true);
+  };
+
+  const confirmDeleteRealInventoryItem = () => {
+    if (realInventoryItemToDelete) {
+      setRealInventoryItems(prev => prev.filter(i => i.id !== realInventoryItemToDelete.id));
+      setDeleteRealInventoryItemModalOpen(false);
+      setRealInventoryItemToDelete(null);
+    }
+  };
+
   // --- RENDERIZADO ---
 
   return (
@@ -846,12 +1052,13 @@ export default function WeddingRentalApp() {
       <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-900 text-white flex flex-col z-50">
         <div className="p-6 flex items-center gap-3 border-b border-slate-800">
           <TrendingUp className="text-emerald-400" />
-          <span className="font-bold text-lg tracking-tight">Bodas Medellín</span>
+          <span className="font-bold text-lg tracking-tight">RentEvent</span>
         </div>
 
         <nav className="flex-1 py-6 px-3 space-y-2">
           {[
-            { id: 'inventory', label: 'Product ranking', icon: Package },
+            { id: 'inventory', label: 'Ranking Productos', icon: TrendingUp },
+            { id: 'real_inventory', label: 'Inventario', icon: Box },
             { id: 'events', label: 'Eventos', icon: Calendar },
             { id: 'clients', label: 'Clientes', icon: Users },
           ].map(item => (
@@ -880,7 +1087,7 @@ export default function WeddingRentalApp() {
         {/* TOPBAR GLOBAL */}
         <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 sticky top-0 z-40 shadow-sm">
           <h1 className="text-xl font-bold text-slate-800 capitalize">
-            {activeTab === 'inventory' ? 'Gestión de Inventario' : activeTab === 'events' ? 'Gestión de Eventos' : 'Directorio de Clientes'}
+            {activeTab === 'inventory' ? 'Ranking de Productos' : activeTab === 'real_inventory' ? 'Control de Inventario' : activeTab === 'events' ? 'Gestión de Eventos' : 'Directorio de Clientes'}
           </h1>
           <div className="flex items-center gap-4">
             <button
@@ -1140,6 +1347,14 @@ export default function WeddingRentalApp() {
           itemType="cliente"
         />
 
+        <DeleteConfirmationModal
+          isOpen={deleteRealInventoryItemModalOpen}
+          onClose={() => { setDeleteRealInventoryItemModalOpen(false); setRealInventoryItemToDelete(null); }}
+          onConfirm={confirmDeleteRealInventoryItem}
+          itemName={realInventoryItemToDelete?.nombre || ""}
+          itemType="ítem de inventario"
+        />
+
         <main className="flex-1 p-8 bg-slate-50/50">
 
           {/* --- VISTA INVENTARIO --- */}
@@ -1253,6 +1468,118 @@ export default function WeddingRentalApp() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- VISTA REAL INVENTORY --- */}
+          {activeTab === 'real_inventory' && (
+            <div className="animate-in fade-in duration-300">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                  <Box className="text-indigo-600" /> Control de Inventario
+                </h2>
+                <div className="flex gap-4 items-center">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase px-1 mb-0.5 relative top-1 z-10 bg-slate-50 w-max ml-2">Simular Disponibilidad</label>
+                    <input
+                      type="date"
+                      value={realInventoryDate}
+                      onChange={(e) => setRealInventoryDate(e.target.value)}
+                      className="border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-indigo-700"
+                    />
+                  </div>
+                  <div className="relative mt-3">
+                    <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Buscar ítem..."
+                      className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={realInventorySearch}
+                      onChange={(e) => setRealInventorySearch(e.target.value)}
+                    />
+                  </div>
+                  <button onClick={() => { setEditingRealInventoryItem(null); setShowRealInventoryForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition mt-3">
+                    <Plus size={18} /> Nuevo Ítem
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-xs">
+                    <tr>
+                      <th className="p-4">Ítem</th>
+                      <th className="p-4 text-center">Stock</th>
+                      <th className="p-4 text-center">Reservado</th>
+                      <th className="p-4 text-center">Disponible</th>
+                      <th className="p-4 text-center">Veces Alquilado</th>
+                      <th className="p-4 text-right">Ingresos Totales</th>
+                      <th className="p-4 text-right">Costo Adquisición</th>
+                      <th className="p-4 text-center">ROI %</th>
+                      <th className="p-4 text-center">Estado ROI</th>
+                      <th className="p-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {realInventoryItems.filter(i => i.nombre.toLowerCase().includes(realInventorySearch.toLowerCase())).map(item => {
+                      const available = calculateAvailability(item.id, realInventoryDate, realInventoryDate);
+                      const reserved = item.cantidad - available;
+
+                      const costoTotalAdquisicion = item.costo_total_adquisicion || (item.cantidad * item.costo) || 0;
+                      const vecesAlquiladoTotal = item.veces_alquilado_total || 0;
+                      const ingresosTotales = item.ingresos_totales || 0;
+
+                      let roiPorcentaje = 0;
+                      if (costoTotalAdquisicion > 0) {
+                        roiPorcentaje = (ingresosTotales / costoTotalAdquisicion) * 100;
+                      }
+
+                      let roiStatus = "🔴 PENDIENTE";
+                      let roiColor = "bg-red-100 text-red-700";
+
+                      if (roiPorcentaje >= 100) {
+                        roiStatus = "✅ RECUPERADO";
+                        roiColor = "bg-green-100 text-green-700";
+                      } else if (roiPorcentaje >= 70) {
+                        roiStatus = "⏳ EN RECUPERACIÓN";
+                        roiColor = "bg-yellow-100 text-yellow-700";
+                      }
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50">
+                          <td className="p-4">
+                            <span className="font-bold text-slate-800">{item.nombre}</span>
+                            <div className="text-xs text-slate-500">{item.categoria}</div>
+                          </td>
+                          <td className="p-4 text-center font-bold text-slate-800 bg-slate-50">{item.cantidad}</td>
+                          <td className="p-4 text-center font-bold text-orange-600 bg-orange-50">{reserved}</td>
+                          <td className="p-4 text-center font-bold text-emerald-600 bg-emerald-50">{available}</td>
+                          <td className="p-4 text-center font-bold text-slate-700">{vecesAlquiladoTotal}</td>
+                          <td className="p-4 text-right font-bold text-indigo-600">{formatoCOP.format(ingresosTotales)}</td>
+                          <td className="p-4 text-right text-slate-600">{formatoCOP.format(costoTotalAdquisicion)}</td>
+                          <td className="p-4 text-center font-bold text-slate-700">{roiPorcentaje.toFixed(1)}%</td>
+                          <td className="p-4 text-center">
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${roiColor}`}>
+                              {roiStatus}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1">
+                              <button onClick={() => { setEditingRealInventoryItem(item); setShowRealInventoryForm(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded"><Edit2 size={16} /></button>
+                              <button onClick={() => handleDeleteRealInventoryItem(item)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {realInventoryItems.length === 0 && (
+                      <tr>
+                        <td colSpan="10" className="p-8 text-center text-slate-500">No hay ítems en el inventario.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1730,10 +2057,54 @@ export default function WeddingRentalApp() {
 
                     {/* SELECCIÓN DE ITEMS (Derecha) */}
                     <div className="lg:col-span-2 flex flex-col h-full">
-                      <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200 overflow-x-auto whitespace-nowrap">
-                        {items.map(item => (
-                          <button key={item.id} onClick={() => addItemToEvent(item, 1)} className="inline-block bg-white border px-3 py-1 rounded-full text-xs mr-2 mb-2 shadow-sm hover:border-indigo-500">{item.nombre} (${item.precioAlquiler})</button>
-                        ))}
+                      <div className="flex justify-between items-center mb-2 px-1 gap-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase whitespace-nowrap hidden sm:block">Selección de Ítems</label>
+                        {eventForm.fecha && (
+                          <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
+                            <input
+                              type="text"
+                              placeholder="Buscar por nombre..."
+                              value={eventItemSearch}
+                              onChange={e => setEventItemSearch(e.target.value)}
+                              className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                          </div>
+                        )}
+                        <span className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                          Disp. fecha: {eventForm.fecha || 'Sin Seleccionar'}
+                        </span>
+                      </div>
+                      <div className={`mb-4 bg-slate-50 p-4 rounded-lg border border-slate-200 overflow-y-auto max-h-[260px] min-h-[80px] flex ${!eventForm.fecha ? 'items-center justify-center' : 'flex-wrap gap-3 content-start'}`}>
+                        {!eventForm.fecha ? (
+                          <div className="text-sm font-bold text-amber-600 flex items-center gap-2">
+                            ⚠️ Por favor ingresa la "Fecha Evento" primero para verificar disponibilidad.
+                          </div>
+                        ) : (
+                          realInventoryItems.filter(i => i.nombre.toLowerCase().includes(eventItemSearch.toLowerCase())).map(item => {
+                            const available = calculateAvailability(item.id, eventForm.fecha, eventForm.fechaRecogida || eventForm.fecha, editingEvent?.id);
+                            const isAvailable = available > 0;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => isAvailable ? addItemToEvent(item, 1) : null}
+                                disabled={!isAvailable}
+                                className={`flex flex-col border p-3 rounded-lg text-xs shadow-sm text-left group transition w-[145px] flex-shrink-0
+                                  ${isAvailable ? "bg-white hover:border-indigo-500 hover:shadow-md cursor-pointer" : "bg-slate-100 opacity-60 cursor-not-allowed border-slate-200"}`}
+                              >
+                                <div className={`font-bold truncate w-full ${isAvailable ? "text-slate-700" : "text-slate-400"}`} title={item.nombre}>{item.nombre}</div>
+                                <div className="text-[10px] text-slate-500 mt-2 flex justify-between w-full">
+                                  <span>Disp:</span>
+                                  <span className={isAvailable ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>{available} / {item.cantidad}</span>
+                                </div>
+                                <div className={`text-[10px] font-bold mt-1 w-full text-right ${isAvailable ? "text-indigo-600" : "text-slate-400"}`}>${item.precioAlquiler}</div>
+                              </button>
+                            );
+                          })
+                        )}
+                        {eventForm.fecha && realInventoryItems.filter(i => i.nombre.toLowerCase().includes(eventItemSearch.toLowerCase())).length === 0 && (
+                          <div className="w-full text-center text-slate-400 py-8 text-sm font-medium">No se encontraron ítems con ese nombre.</div>
+                        )}
                       </div>
                       <div className="flex-1 overflow-y-auto border rounded-lg mb-4 p-2 bg-slate-50/30">
                         {eventForm.itemsSeleccionados.length === 0 && <div className="text-center text-slate-400 py-10 text-sm">No hay ítems seleccionados para este evento.</div>}
@@ -1847,6 +2218,85 @@ export default function WeddingRentalApp() {
                 <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
                   <button type="button" onClick={() => setShowClientForm(false)} className="px-4 py-2 text-slate-600">Cancelar</button>
                   <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded shadow">Guardar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL REAL INVENTORY */}
+        {showRealInventoryForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative">
+              <button onClick={() => setShowRealInventoryForm(false)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><X /></button>
+              <h3 className="text-lg font-bold mb-4">{editingRealInventoryItem ? 'Editar Ítem de Inventario' : 'Nuevo Ítem de Inventario'}</h3>
+              <form onSubmit={handleSaveRealInventoryItem} className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Nombre</label>
+                  <input required name="nombre" defaultValue={editingRealInventoryItem?.nombre} className="w-full border p-2 rounded" placeholder="Ej: Silla Tiffany" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
+                  <select name="categoria" defaultValue={editingRealInventoryItem?.categoria || CATEGORIAS[0]} className="w-full border p-2 rounded">
+                    {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Cantidad Total</label>
+                  <input type="number" name="cantidad" required defaultValue={editingRealInventoryItem?.cantidad} className="w-full border p-2 rounded font-bold" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Costo Unitario</label>
+                  <input type="number" name="costo" required defaultValue={editingRealInventoryItem?.costo} className="w-full border p-2 rounded" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Precio Alquiler</label>
+                  <input type="number" name="precioAlquiler" required defaultValue={editingRealInventoryItem?.precioAlquiler} className="w-full border p-2 rounded" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Costo Logística</label>
+                  <input type="number" name="costoTransporte" defaultValue={editingRealInventoryItem?.costoTransporte || 0} className="w-full border p-2 rounded" />
+                </div>
+
+                {editingRealInventoryItem && (
+                  <div className="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2 space-y-3">
+                    <h4 className="text-sm font-bold text-indigo-700 uppercase flex items-center gap-2">
+                      <TrendingUp size={16} /> Rentabilidad (ROI)
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-2">
+                      <div className="bg-white p-3 rounded-lg border shadow-sm">
+                        <span className="block text-[10px] uppercase font-bold text-slate-500">Veces Alq.</span>
+                        <span className="font-bold text-slate-800">{editingRealInventoryItem.veces_alquilado_total || 0}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border shadow-sm">
+                        <span className="block text-[10px] uppercase font-bold text-slate-500">Ingresos Totales</span>
+                        <span className="font-bold text-emerald-600">{formatoCOP.format(editingRealInventoryItem.ingresos_totales || 0)}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border shadow-sm">
+                        <span className="block text-[10px] uppercase font-bold text-slate-500">Costo Adquisición</span>
+                        <span className="font-bold text-red-500">{formatoCOP.format(editingRealInventoryItem.costo_total_adquisicion || (editingRealInventoryItem.cantidad * editingRealInventoryItem.costo) || 0)}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border shadow-sm flex flex-col justify-center items-center">
+                        <span className="block text-[10px] uppercase font-bold text-slate-500 mb-1">ROI %</span>
+                        {(() => {
+                          const costoAcq = editingRealInventoryItem.costo_total_adquisicion || (editingRealInventoryItem.cantidad * editingRealInventoryItem.costo) || 0;
+                          const ingresos = editingRealInventoryItem.ingresos_totales || 0;
+                          const roi = costoAcq > 0 ? (ingresos / costoAcq) * 100 : 0;
+                          const color = roi >= 100 ? 'text-green-600 bg-green-50' : roi >= 70 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50';
+                          return (
+                            <span className={`px-2 py-1 rounded font-bold text-xs ${color}`}>
+                              {roi.toFixed(1)}%
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="col-span-2 flex justify-end gap-2 mt-4">
+                  <button type="button" onClick={() => setShowRealInventoryForm(false)} className="px-4 py-2 text-slate-600">Cancelar</button>
+                  <button type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded shadow">Guardar</button>
                 </div>
               </form>
             </div>
