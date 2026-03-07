@@ -7,8 +7,11 @@ const EventSettingsModal = ({ isOpen, onClose, currentSettings, onSave }) => {
 
     // Reset settings when modal opens with new currentSettings
     useEffect(() => {
-        if (isOpen) {
-            setSettings(currentSettings);
+        if (isOpen && currentSettings) {
+            const timer = setTimeout(() => {
+                setSettings(currentSettings);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [isOpen, currentSettings]);
 

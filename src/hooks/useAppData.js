@@ -97,7 +97,7 @@ export function useAppData() {
 
   // --- PROXIES TO SYNC LOCAL STATE TO SUPABASE ---
 
-  const syncArrayToDB = async (table, prev, next, transformToDB) => {
+  const syncArrayToDB = useCallback(async (table, prev, next, transformToDB) => {
     if (!user) return;
     const { added, updated, deleted } = getArrayDiff(prev, next);
     
@@ -116,7 +116,7 @@ export function useAppData() {
       const { error } = await supabase.from(table).delete().in('id', idsToDelete);
       if (error) console.error(`Failed delete from ${table}:`, error);
     }
-  };
+  }, [user]);
 
   const setItems = useCallback((updater) => {
     _setItems(prev => {
@@ -124,7 +124,7 @@ export function useAppData() {
       syncArrayToDB('inventario', prev, next, mapItemToDB);
       return next;
     });
-  }, [user]);
+  }, [syncArrayToDB]);
 
   const setRealInventoryItems = useCallback((updater) => {
     _setRealInventoryItems(prev => {
@@ -132,14 +132,14 @@ export function useAppData() {
       syncArrayToDB('inventario', prev, next, mapItemToDB);
       return next;
     });
-  }, [user]);
+  }, [syncArrayToDB]);
 
   const setEventos = useCallback((updater) => {
     _setEventos(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       syncArrayToDB('eventos', prev, next, mapEventToDB).then(async () => {
         // Handle Event Items
-        const { added, updated, deleted } = getArrayDiff(prev, next);
+        const { added, updated } = getArrayDiff(prev, next);
         const changedEvents = [...added, ...updated];
         
         for (const ev of changedEvents) {
@@ -157,7 +157,7 @@ export function useAppData() {
       });
       return next;
     });
-  }, [user]);
+  }, [syncArrayToDB]);
 
   const setClientes = useCallback((updater) => {
     _setClientes(prev => {
@@ -169,7 +169,7 @@ export function useAppData() {
         documento: c.documento
       })).then(async () => {
         // Sync contacts
-        const { added, updated, deleted } = getArrayDiff(prev, next);
+        const { added, updated } = getArrayDiff(prev, next);
         const changedClients = [...added, ...updated];
         
         for (const client of changedClients) {
@@ -189,7 +189,7 @@ export function useAppData() {
       });
       return next;
     });
-  }, [user]);
+  }, [syncArrayToDB]);
 
   // Config savers
   const savePesos = async (newPesos) => {

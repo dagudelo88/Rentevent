@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import EventListView from '../components/EventListView';
 import { useAppData } from '../hooks/useAppData';
-import { supabase } from '../lib/supabase';
 
 // --- CONFIGURACIÓN Y UTILERÍAS ---
 
@@ -293,7 +292,11 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, itemTyp
   const [inputValue, setInputValue] = useState("");
 
   useEffect(() => {
-    if (isOpen) setInputValue("");
+    if (isOpen) {
+      // Use setTimeout to avoid synchronous state update during render if isOpen changes
+      const timer = setTimeout(() => setInputValue(""), 0);
+      return () => clearTimeout(timer);
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -350,10 +353,6 @@ export default function WeddingRentalApp() {
     realInventoryItems, setRealInventoryItems,
     loading
   } = useAppData();
-
-  if (loading) {
-    return <div className="flex h-screen items-center justify-center text-slate-500">Cargando datos del sistema...</div>;
-  }
 
   // UI States
   const [showItemForm, setShowItemForm] = useState(false);
@@ -526,7 +525,7 @@ export default function WeddingRentalApp() {
     if (hasChanges) {
       setEventos(updatedEvents);
     }
-  }, [eventos]);
+  }, [eventos, setEventos]);
 
   useEffect(() => {
     if (showItemForm) {
@@ -577,7 +576,7 @@ export default function WeddingRentalApp() {
         const parts = dateStr.split('-');
         if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
         return new Date(dateStr).getTime();
-      } catch (e) {
+      } catch {
         return null;
       }
     };
@@ -647,6 +646,7 @@ export default function WeddingRentalApp() {
 
     const nuevoEvento = {
       ...eventForm,
+      // eslint-disable-next-line react-hooks/purity
       id: eventForm.id || Date.now(),
       totalAlquiler,
       totalGeneral,
@@ -993,6 +993,10 @@ export default function WeddingRentalApp() {
   };
 
   // --- RENDERIZADO ---
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center text-slate-500">Cargando datos del sistema...</div>;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-slate-800 font-sans">
@@ -2122,7 +2126,7 @@ export default function WeddingRentalApp() {
                   </div>
 
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                    {clientContacts.map((contact, index) => (
+                    {clientContacts.map((contact) => (
                       <div key={contact.id} className={`bg-white p-3 rounded-lg border ${contact.esPrincipal ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200'} relative group transition`}>
                         {contact.esPrincipal && (
                           <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow-sm z-10">
