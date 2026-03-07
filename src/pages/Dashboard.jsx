@@ -454,13 +454,15 @@ export default function WeddingRentalApp() {
 
         if (sortConfig.key === 'score') {
           // Score is calculated on the fly, so we need to calculate it for sorting
-          const metricsA = calcularMetricas(a, pesos, eventSettings.scoreColors);
-          const metricsB = calcularMetricas(b, pesos, eventSettings.scoreColors);
+          const scoreColors = eventSettings?.scoreColors || DEFAULT_EVENT_SETTINGS.scoreColors;
+          const metricsA = calcularMetricas(a, pesos, scoreColors);
+          const metricsB = calcularMetricas(b, pesos, scoreColors);
           aValue = Number(metricsA.score);
           bValue = Number(metricsB.score);
         } else if (sortConfig.key === 'paybackEventos') {
-          const metricsA = calcularMetricas(a, pesos, eventSettings.scoreColors);
-          const metricsB = calcularMetricas(b, pesos, eventSettings.scoreColors);
+          const scoreColors = eventSettings?.scoreColors || DEFAULT_EVENT_SETTINGS.scoreColors;
+          const metricsA = calcularMetricas(a, pesos, scoreColors);
+          const metricsB = calcularMetricas(b, pesos, scoreColors);
           aValue = metricsA.paybackEventos === ">100" ? 999 : Number(metricsA.paybackEventos);
           bValue = metricsB.paybackEventos === ">100" ? 999 : Number(metricsB.paybackEventos);
         } else {
@@ -478,7 +480,7 @@ export default function WeddingRentalApp() {
       });
     }
     return sortableItems;
-  }, [items, sortConfig, pesos, eventSettings.scoreColors]);
+  }, [items, sortConfig, pesos, eventSettings?.scoreColors]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
