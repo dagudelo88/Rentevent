@@ -5,9 +5,13 @@ create extension if not exists "uuid-ossp";
 -- 1. Profiles & Roles
 -- ==========================================
 
-create type user_role as enum ('admin', 'user');
+DO $$ BEGIN
+    create type user_role as enum ('admin', 'user');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   role user_role default 'user'::user_role not null,
   is_active boolean default true not null,
@@ -17,25 +21,38 @@ create table public.profiles (
 
 alter table public.profiles enable row level security;
 
+DROP POLICY IF EXISTS "Users can view their own profile." ON public.profiles;
 create policy "Users can view their own profile."
   on public.profiles for select
   using ( auth.uid() = id );
 
-create policy "Admins can view all profiles."
-  on public.profiles for select
-  using ( exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+DROP POLICY IF EXISTS "Admins can view all profiles." ON public.profiles;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can view all profiles.') THEN
+    create policy "Admins can view all profiles." on public.profiles for select using ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
+  END IF;
+END $$;
 
-create policy "Users can update their own profile."
-  on public.profiles for update
-  using ( auth.uid() = id );
+DROP POLICY IF EXISTS "Users can update their own profile." ON public.profiles;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can update their own profile.') THEN
+    create policy "Users can update their own profile." on public.profiles for update using ( auth.uid() = id );
+  END IF;
+END $$;
 
-create policy "Admins can update any profile."
-  on public.profiles for update
-  using ( exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+DROP POLICY IF EXISTS "Admins can update any profile." ON public.profiles;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can update any profile.') THEN
+    create policy "Admins can update any profile." on public.profiles for update using ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
+  END IF;
+END $$;
 
-create policy "Admins can insert profiles."
-  on public.profiles for insert
-  with check ( exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+DROP POLICY IF EXISTS "Admins can insert profiles." ON public.profiles;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can insert profiles.') THEN
+    create policy "Admins can insert profiles." on public.profiles for insert with check ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
+  END IF;
+END $$;
 
 -- Trigger to handle updated_at
 create or replace function public.handle_updated_at()
@@ -46,6 +63,7 @@ begin
 end;
 $$ language plpgsql;
 
+DROP TRIGGER IF EXISTS on_profiles_updated ON public.profiles;
 create trigger on_profiles_updated
   before update on public.profiles
   for each row execute procedure public.handle_updated_at();
@@ -54,7 +72,7 @@ create trigger on_profiles_updated
 -- 2. Invite Codes (Admin Flow)
 -- ==========================================
 
-create table public.invite_codes (
+create table if not exists public.invite_codes (
   id uuid default uuid_generate_v4() primary key,
   code text unique not null,
   created_by uuid references public.profiles(id) on delete set null,
@@ -65,15 +83,16 @@ create table public.invite_codes (
 
 alter table public.invite_codes enable row level security;
 
+DROP POLICY IF EXISTS "Admins can manage invite codes." ON public.invite_codes;
 create policy "Admins can manage invite codes."
   on public.invite_codes for all
-  using ( exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+  using ( (auth.jwt() ->> 'role') = 'admin' );
 
 -- ==========================================
 -- 3. Inventory (Unificando wedding_inventory_v8 y wedding_real_inventory_v2)
 -- ==========================================
 
-create table public.inventario (
+create table if not exists public.inventario (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   nombre text not null,
@@ -96,10 +115,12 @@ create table public.inventario (
 
 alter table public.inventario enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own inventario" ON public.inventario;
 create policy "Users manage their own inventario"
   on public.inventario for all
-  using ( auth.uid() = user_id OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
 
+DROP TRIGGER IF EXISTS on_inventario_updated ON public.inventario;
 create trigger on_inventario_updated
   before update on public.inventario
   for each row execute procedure public.handle_updated_at();
@@ -108,7 +129,7 @@ create trigger on_inventario_updated
 -- 4. Clients
 -- ==========================================
 
-create table public.clientes (
+create table if not exists public.clientes (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   nombre text not null,
@@ -120,15 +141,17 @@ create table public.clientes (
 
 alter table public.clientes enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own clientes" ON public.clientes;
 create policy "Users manage their own clientes"
   on public.clientes for all
-  using ( auth.uid() = user_id OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
 
+DROP TRIGGER IF EXISTS on_clientes_updated ON public.clientes;
 create trigger on_clientes_updated
   before update on public.clientes
   for each row execute procedure public.handle_updated_at();
 
-create table public.contactos_cliente (
+create table if not exists public.contactos_cliente (
   id uuid default uuid_generate_v4() primary key,
   cliente_id uuid references public.clientes(id) on delete cascade not null,
   nombre text not null,
@@ -139,12 +162,13 @@ create table public.contactos_cliente (
 
 alter table public.contactos_cliente enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own contactos_cliente" ON public.contactos_cliente;
 create policy "Users manage their own contactos_cliente"
   on public.contactos_cliente for all
   using (
     exists (
       select 1 from public.clientes c 
-      where c.id = cliente_id and (c.user_id = auth.uid() OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+      where c.id = cliente_id and (c.user_id = auth.uid() OR (auth.jwt() ->> 'role') = 'admin')
     )
   );
 
@@ -152,7 +176,7 @@ create policy "Users manage their own contactos_cliente"
 -- 5. Events
 -- ==========================================
 
-create table public.eventos (
+create table if not exists public.eventos (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   nombre_evento text not null,
@@ -181,10 +205,12 @@ create table public.eventos (
 
 alter table public.eventos enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own eventos" ON public.eventos;
 create policy "Users manage their own eventos"
   on public.eventos for all
-  using ( auth.uid() = user_id OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
 
+DROP TRIGGER IF EXISTS on_eventos_updated ON public.eventos;
 create trigger on_eventos_updated
   before update on public.eventos
   for each row execute procedure public.handle_updated_at();
@@ -193,7 +219,7 @@ create trigger on_eventos_updated
 -- 6. Event Items
 -- ==========================================
 
-create table public.evento_items (
+create table if not exists public.evento_items (
   id uuid default uuid_generate_v4() primary key,
   evento_id uuid references public.eventos(id) on delete cascade not null,
   item_id uuid references public.inventario(id) on delete restrict not null,
@@ -203,12 +229,13 @@ create table public.evento_items (
 
 alter table public.evento_items enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own evento_items" ON public.evento_items;
 create policy "Users manage their own evento_items"
   on public.evento_items for all
   using (
     exists (
       select 1 from public.eventos e 
-      where e.id = evento_id and (e.user_id = auth.uid() OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+      where e.id = evento_id and (e.user_id = auth.uid() OR (auth.jwt() ->> 'role') = 'admin')
     )
   );
 
@@ -216,7 +243,7 @@ create policy "Users manage their own evento_items"
 -- 7. App Configurations
 -- ==========================================
 
-create table public.configuraciones (
+create table if not exists public.configuraciones (
   user_id uuid references public.profiles(id) on delete cascade primary key,
   pesos jsonb,
   event_settings jsonb,
@@ -227,10 +254,12 @@ create table public.configuraciones (
 
 alter table public.configuraciones enable row level security;
 
+DROP POLICY IF EXISTS "Users manage their own configuraciones" ON public.configuraciones;
 create policy "Users manage their own configuraciones"
   on public.configuraciones for all
-  using ( auth.uid() = user_id OR exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') );
+  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
 
+DROP TRIGGER IF EXISTS on_configuraciones_updated ON public.configuraciones;
 create trigger on_configuraciones_updated
   before update on public.configuraciones
   for each row execute procedure public.handle_updated_at();
