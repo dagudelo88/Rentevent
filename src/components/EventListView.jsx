@@ -36,10 +36,7 @@ const EventListView = ({ events, onEdit, onDelete, formatCurrency, settings }) =
         { key: 'acciones', label: 'Acciones', required: true }
     ];
 
-    const [visibleColumns, setVisibleColumns] = useState(() => {
-        const saved = localStorage.getItem('eventListColumns');
-        return saved ? JSON.parse(saved) : ['nombre', 'fecha', 'estado', 'lugar', 'total', 'acciones'];
-    });
+    const [visibleColumns, setVisibleColumns] = useState(['nombre', 'fecha', 'estado', 'lugar', 'total', 'acciones']);
 
     const toggleColumn = (key) => {
         let newColumns;
@@ -49,7 +46,7 @@ const EventListView = ({ events, onEdit, onDelete, formatCurrency, settings }) =
             newColumns = [...visibleColumns, key];
         }
         setVisibleColumns(newColumns);
-        localStorage.setItem('eventListColumns', JSON.stringify(newColumns));
+        // localStorage.setItem('eventListColumns', JSON.stringify(newColumns)); // LocalStorage call removed
     };
 
     const handleSort = (key) => {
