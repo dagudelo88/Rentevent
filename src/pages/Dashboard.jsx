@@ -347,12 +347,16 @@ export default function WeddingRentalApp() {
     items, setItems,
     eventos, setEventos,
     clientes, setClientes,
-    pesos, setPesos,
-    appSettings, setAppSettings,
-    eventSettings, setEventSettings,
+    pesos: rawPesos, setPesos,
+    appSettings: rawAppSettings, setAppSettings,
+    eventSettings: rawEventSettings, setEventSettings,
     realInventoryItems, setRealInventoryItems,
     loading
   } = useAppData();
+
+  const pesos = rawPesos || DEFAULT_WEIGHTS;
+  const eventSettings = rawEventSettings || DEFAULT_EVENT_SETTINGS;
+  const appSettings = rawAppSettings || DEFAULT_APP_SETTINGS;
 
   // UI States
   const [showItemForm, setShowItemForm] = useState(false);
