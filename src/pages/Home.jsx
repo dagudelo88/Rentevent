@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [inviteCode, setInviteCode] = useState('');
@@ -57,39 +57,16 @@ export default function Home() {
           </h1>
         </div>
 
-        <nav className="flex items-center gap-3">
+        <nav className="flex items-center gap-4">
           <Link to="/about" className="text-slate-600 hover:text-indigo-600 font-medium transition hidden sm:inline">
             Nosotros
           </Link>
-
-          {user ? (
-            <>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition font-semibold"
-                >
-                  <Shield size={15} /> Admin
-                </Link>
-              )}
-              <Link to="/app" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-sm">
-                Dashboard
-              </Link>
-              <button
-                onClick={signOut}
-                className="text-sm text-slate-500 hover:text-slate-800 transition font-medium"
-              >
-                Salir
-              </button>
-            </>
-          ) : (
-            <Link
-              to="/auth/signin"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold"
-            >
-              Ingresar
-            </Link>
-          )}
+          <Link
+            to={user ? '/app' : '/auth/signin'}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold"
+          >
+            {user ? 'Dashboard' : 'Ingresar'}
+          </Link>
         </nav>
       </header>
 
@@ -109,28 +86,19 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 items-center">
-            {user ? (
-              <Link
-                to="/app"
-                className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition font-bold text-lg shadow-lg"
+            <Link
+              to={user ? '/app' : '/auth/signin'}
+              className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition font-bold text-lg shadow-lg"
+            >
+              {user ? 'Ir al Dashboard' : 'Iniciar Sesión'} <ArrowRight size={20} />
+            </Link>
+            {!user && (
+              <a
+                href="#register"
+                className="px-8 py-3 border-2 border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition font-bold text-lg"
               >
-                Ir al Dashboard <ArrowRight size={20} />
-              </Link>
-            ) : (
-              <>
-                <Link
-                  to="/auth/signin"
-                  className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition font-bold text-lg shadow-lg"
-                >
-                  Iniciar Sesión <ArrowRight size={20} />
-                </Link>
-                <a
-                  href="#register"
-                  className="px-8 py-3 border-2 border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition font-bold text-lg"
-                >
-                  Tengo un código
-                </a>
-              </>
+                Tengo un código
+              </a>
             )}
           </div>
         </section>

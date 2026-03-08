@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Plus, Trash2, Edit2, Save, X, Download, TrendingUp, Package, Truck,
   AlertCircle, Settings, RotateCcw, Calendar, Users, FileText, CheckCircle,
-  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid, Box
+  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid, Box,
+  Shield, LogOut,
 } from 'lucide-react';
 import EventListView from '../components/EventListView';
 import { useAppData } from '../hooks/useAppData';
+import { useAuth } from '../contexts/AuthContext';
 
 // --- CONFIGURACIÓN Y UTILERÍAS ---
 
@@ -342,6 +345,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, itemTyp
 export default function WeddingRentalApp() {
   // --- ESTADOS ---
   const [activeTab, setActiveTab] = useState('inventory');
+  const { user, isAdmin, signOut } = useAuth();
 
   const {
     items, setItems,
@@ -1032,9 +1036,25 @@ export default function WeddingRentalApp() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
-          <div className="bg-slate-800 rounded-xl p-4">
-            <p className="text-xs text-slate-400 mb-1">Versión 2.0</p>
+        <div className="p-4 border-t border-slate-800 space-y-2">
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-amber-400 hover:bg-slate-800 hover:text-amber-300 transition font-medium text-sm"
+            >
+              <Shield size={18} />
+              <span>Panel de Admin</span>
+            </Link>
+          )}
+          <button
+            onClick={signOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-red-400 transition font-medium text-sm"
+          >
+            <LogOut size={18} />
+            <span>Cerrar Sesión</span>
+          </button>
+          <div className="bg-slate-800 rounded-xl p-3 mt-2">
+            <p className="text-xs text-slate-400 mb-0.5">Versión 2.0</p>
             <p className="text-xs font-bold text-slate-500">© 2026 Rentevent</p>
           </div>
         </div>
@@ -1057,8 +1077,11 @@ export default function WeddingRentalApp() {
               <Settings size={22} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-400 rounded-full border-2 border-white"></span>
             </button>
-            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs ring-2 ring-indigo-50">
-              AD
+            <div
+              className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-xs ring-2 ring-indigo-50 uppercase"
+              title={user?.email}
+            >
+              {user?.email?.substring(0, 2) ?? '??'}
             </div>
           </div>
         </header>
