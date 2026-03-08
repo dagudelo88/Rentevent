@@ -1013,10 +1013,14 @@ export default function WeddingRentalApp() {
 
       {/* SIDEBAR NAVIGATION */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-900 text-white flex flex-col z-50">
-        <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-          <TrendingUp className="text-emerald-400" />
-          <span className="font-bold text-lg tracking-tight">RentEvent</span>
-        </div>
+        <Link
+          to="/"
+          className="p-6 flex items-center gap-3 border-b border-slate-800 hover:bg-slate-800 transition group"
+          title="Ir al inicio"
+        >
+          <TrendingUp className="text-emerald-400 group-hover:text-emerald-300 transition" />
+          <span className="font-bold text-lg tracking-tight group-hover:text-white transition">RentEvent</span>
+        </Link>
 
         <nav className="flex-1 py-6 px-3 space-y-2">
           {[
