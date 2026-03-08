@@ -13,6 +13,7 @@ END $$;
 
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
+  email text,
   role user_role default 'user'::user_role not null,
   is_active boolean default true not null,
   created_at timestamptz default now() not null,
@@ -27,32 +28,24 @@ create policy "Users can view their own profile."
   using ( auth.uid() = id );
 
 DROP POLICY IF EXISTS "Admins can view all profiles." ON public.profiles;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can view all profiles.') THEN
-    create policy "Admins can view all profiles." on public.profiles for select using ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
-  END IF;
-END $$;
+create policy "Admins can view all profiles."
+  on public.profiles for select
+  using ( public.get_my_role() = 'admin' OR id = auth.uid() );
 
 DROP POLICY IF EXISTS "Users can update their own profile." ON public.profiles;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can update their own profile.') THEN
-    create policy "Users can update their own profile." on public.profiles for update using ( auth.uid() = id );
-  END IF;
-END $$;
+create policy "Users can update their own profile."
+  on public.profiles for update
+  using ( auth.uid() = id );
 
 DROP POLICY IF EXISTS "Admins can update any profile." ON public.profiles;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can update any profile.') THEN
-    create policy "Admins can update any profile." on public.profiles for update using ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
-  END IF;
-END $$;
+create policy "Admins can update any profile."
+  on public.profiles for update
+  using ( public.get_my_role() = 'admin' OR id = auth.uid() );
 
 DROP POLICY IF EXISTS "Admins can insert profiles." ON public.profiles;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Admins can insert profiles.') THEN
-    create policy "Admins can insert profiles." on public.profiles for insert with check ( (auth.jwt() ->> 'role') = 'admin' OR id = auth.uid() );
-  END IF;
-END $$;
+create policy "Admins can insert profiles."
+  on public.profiles for insert
+  with check ( public.get_my_role() = 'admin' OR id = auth.uid() );
 
 -- Trigger to handle updated_at
 create or replace function public.handle_updated_at()
@@ -86,7 +79,8 @@ alter table public.invite_codes enable row level security;
 DROP POLICY IF EXISTS "Admins can manage invite codes." ON public.invite_codes;
 create policy "Admins can manage invite codes."
   on public.invite_codes for all
-  using ( (auth.jwt() ->> 'role') = 'admin' );
+  using ( public.get_my_role() = 'admin' )
+  with check ( public.get_my_role() = 'admin' );
 
 -- ==========================================
 -- 3. Inventory (Unificando wedding_inventory_v8 y wedding_real_inventory_v2)
@@ -118,7 +112,7 @@ alter table public.inventario enable row level security;
 DROP POLICY IF EXISTS "Users manage their own inventario" ON public.inventario;
 create policy "Users manage their own inventario"
   on public.inventario for all
-  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
+  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
 
 DROP TRIGGER IF EXISTS on_inventario_updated ON public.inventario;
 create trigger on_inventario_updated
@@ -144,7 +138,7 @@ alter table public.clientes enable row level security;
 DROP POLICY IF EXISTS "Users manage their own clientes" ON public.clientes;
 create policy "Users manage their own clientes"
   on public.clientes for all
-  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
+  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
 
 DROP TRIGGER IF EXISTS on_clientes_updated ON public.clientes;
 create trigger on_clientes_updated
@@ -167,8 +161,8 @@ create policy "Users manage their own contactos_cliente"
   on public.contactos_cliente for all
   using (
     exists (
-      select 1 from public.clientes c 
-      where c.id = cliente_id and (c.user_id = auth.uid() OR (auth.jwt() ->> 'role') = 'admin')
+      select 1 from public.clientes c
+      where c.id = cliente_id and (c.user_id = auth.uid() OR public.get_my_role() = 'admin')
     )
   );
 
@@ -208,7 +202,7 @@ alter table public.eventos enable row level security;
 DROP POLICY IF EXISTS "Users manage their own eventos" ON public.eventos;
 create policy "Users manage their own eventos"
   on public.eventos for all
-  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
+  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
 
 DROP TRIGGER IF EXISTS on_eventos_updated ON public.eventos;
 create trigger on_eventos_updated
@@ -234,8 +228,8 @@ create policy "Users manage their own evento_items"
   on public.evento_items for all
   using (
     exists (
-      select 1 from public.eventos e 
-      where e.id = evento_id and (e.user_id = auth.uid() OR (auth.jwt() ->> 'role') = 'admin')
+      select 1 from public.eventos e
+      where e.id = evento_id and (e.user_id = auth.uid() OR public.get_my_role() = 'admin')
     )
   );
 
@@ -257,7 +251,7 @@ alter table public.configuraciones enable row level security;
 DROP POLICY IF EXISTS "Users manage their own configuraciones" ON public.configuraciones;
 create policy "Users manage their own configuraciones"
   on public.configuraciones for all
-  using ( auth.uid() = user_id OR (auth.jwt() ->> 'role') = 'admin' );
+  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
 
 DROP TRIGGER IF EXISTS on_configuraciones_updated ON public.configuraciones;
 create trigger on_configuraciones_updated
@@ -267,6 +261,34 @@ create trigger on_configuraciones_updated
 -- ==========================================
 -- 8. Functions
 -- ==========================================
+
+-- Security-definer helper: returns the calling user's role without RLS recursion.
+-- Used in RLS policies instead of auth.jwt() ->> 'role' (which requires a custom
+-- JWT claim hook that is not enabled by default).
+create or replace function public.get_my_role()
+returns text
+language sql
+security definer
+stable
+as $$
+  select role::text from public.profiles where id = auth.uid();
+$$;
+
+-- Auto-create a profile row when a new auth user is inserted
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, role)
+  values (new.id, new.email, 'user'::user_role)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 -- Function to validate invite code without needing full read access to invite_codes table
 create or replace function public.validate_invite_code(code_str text)
