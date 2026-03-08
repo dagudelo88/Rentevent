@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 const NAV_LINKS = [
   { label: 'Catálogo',  href: '/#catalogo' },
   { label: 'Nosotros',  href: '/about'     },
-  { label: 'Contacto',  href: '/#contacto' },
+  { label: 'Contacto',  href: '/contacto'  },
 ];
 
 export default function Navbar() {

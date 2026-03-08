@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
+import Contact from './pages/Contact';
 import SignIn from './pages/Auth/SignIn';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/Admin/AdminPanel';
@@ -13,6 +14,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
+      <Route path="/contacto" element={<Contact />} />
       <Route path="/auth/signin" element={<SignIn />} />
       
       {/* Protected App Route */}
