@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Instagram, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { config } from '../config';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import { CATEGORIES, CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from '../constants/inventory';
 
 const ALL_FILTER = 'Todos';
@@ -130,7 +130,7 @@ function CatalogSection() {
 }
 
 function ContactSection() {
-  const { phone, whatsapp, email, address, instagram } = config.contact;
+  const { contact: { phone, whatsapp, email, address, instagram } } = useSiteSettings();
 
   const contactItems = [
     {

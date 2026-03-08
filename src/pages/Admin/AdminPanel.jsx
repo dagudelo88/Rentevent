@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSiteSettings } from '../../hooks/useSiteSettings';
 import {
   Key, Users, RefreshCw, Plus, CheckCircle, Clock, Copy, Trash2,
-  ArrowLeft, Shield, AlertTriangle, LayoutDashboard,
+  ArrowLeft, Shield, AlertTriangle, LayoutDashboard, Phone, Mail,
+  MapPin, Instagram, Save, Globe,
 } from 'lucide-react';
 
 const CODE_EXPIRY_DAYS = 7;
@@ -23,6 +25,77 @@ function Badge({ variant, children }) {
     <span className={`px-2.5 py-1 text-xs font-bold rounded-full inline-flex items-center gap-1 ${styles[variant] ?? ''}`}>
       {children}
     </span>
+  );
+}
+
+const CONTACT_FIELDS = [
+  { key: 'phone',     label: 'Teléfono',   icon: <Phone size={16} />,     placeholder: '+57 300 000 0000',  type: 'tel'   },
+  { key: 'whatsapp',  label: 'WhatsApp',   icon: <Phone size={16} />,     placeholder: '573000000000',      type: 'tel',  hint: 'Solo números, sin espacios ni +. Ej: 573001234567' },
+  { key: 'email',     label: 'Correo',     icon: <Mail size={16} />,      placeholder: 'info@rentevent.co', type: 'email' },
+  { key: 'address',   label: 'Dirección',  icon: <MapPin size={16} />,    placeholder: 'Bogotá, Colombia',  type: 'text'  },
+  { key: 'instagram', label: 'Instagram',  icon: <Instagram size={16} />, placeholder: '@rentevent',        type: 'text'  },
+];
+
+function ContactInfoSection({ showToast }) {
+  const { contact, loading, saving, saveContact } = useSiteSettings();
+  const [form, setForm] = useState(null);
+
+  // Populate form once the DB value arrives
+  useEffect(() => {
+    if (!loading) setForm(contact);
+  }, [loading, contact]);
+
+  const handleChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { error } = await saveContact(form);
+    if (error) showToast('Error al guardar: ' + error, true);
+    else showToast('Información de contacto actualizada');
+  };
+
+  return (
+    <section className="bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-100">
+        <Globe size={18} className="text-indigo-600" />
+        <h2 className="text-lg font-bold text-slate-800">Información de Contacto del Sitio</h2>
+      </div>
+
+      {loading || !form ? (
+        <p className="text-center text-sm text-slate-400 py-8">Cargando...</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+            {CONTACT_FIELDS.map(({ key, label, icon, placeholder, type, hint }) => (
+              <div key={key}>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                  {icon} {label}
+                </label>
+                <input
+                  type={type}
+                  value={form[key] ?? ''}
+                  onChange={(e) => handleChange(key, e.target.value)}
+                  placeholder={placeholder}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition"
+                />
+                {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold text-sm disabled:opacity-50"
+            >
+              <Save size={15} />
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 
@@ -374,6 +447,9 @@ export default function AdminPanel() {
           </section>
 
         </div>
+
+        <ContactInfoSection showToast={showToast} />
+
       </div>
 
       {/* Toast notification */}

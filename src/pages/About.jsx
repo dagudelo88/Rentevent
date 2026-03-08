@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Star, Truck, HeartHandshake, Package } from 'lucide-react';
-import { config } from '../config';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const highlights = [
   {
@@ -27,6 +27,8 @@ const highlights = [
 ];
 
 export default function About() {
+  const { contact: { whatsapp } } = useSiteSettings();
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-white px-6 py-4 shadow-sm border-b border-slate-100 flex items-center justify-between">
@@ -102,7 +104,7 @@ export default function About() {
               Ver catálogo
             </Link>
             <a
-              href={`https://wa.me/${config.contact.whatsapp}`}
+              href={`https://wa.me/${whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-2.5 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 border border-indigo-400 transition text-sm"
