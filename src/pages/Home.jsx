@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Instagram, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import Navbar from '../components/Navbar';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { CATEGORIES, CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from '../constants/inventory';
 
@@ -221,39 +220,9 @@ function ContactSection() {
 }
 
 export default function Home() {
-  const { user } = useAuth();
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Sticky Header */}
-      <header className="bg-white/90 backdrop-blur px-6 py-4 shadow-sm flex items-center justify-between sticky top-0 z-20 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 md:w-9 md:h-9 bg-indigo-600 rounded-xl flex items-center justify-center rotate-3">
-            <span className="text-white font-black text-lg">R</span>
-          </div>
-          <span className="text-xl md:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-indigo-800">
-            Rentevent
-          </span>
-        </div>
-
-        <nav className="flex items-center gap-1 sm:gap-3">
-          <a href="#catalogo" className="hidden sm:inline text-slate-600 hover:text-indigo-600 font-medium transition px-2 py-1 text-sm">
-            Catálogo
-          </a>
-          <Link to="/about" className="hidden sm:inline text-slate-600 hover:text-indigo-600 font-medium transition px-2 py-1 text-sm">
-            Nosotros
-          </Link>
-          <a href="#contacto" className="hidden sm:inline text-slate-600 hover:text-indigo-600 font-medium transition px-2 py-1 text-sm">
-            Contacto
-          </a>
-          <Link
-            to={user ? '/app' : '/auth/signin'}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
-          >
-            {user ? 'Dashboard' : 'Ingresar'}
-          </Link>
-        </nav>
-      </header>
+      <Navbar />
 
       <main className="flex-1 flex flex-col">
         {/* Hero */}
