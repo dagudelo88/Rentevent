@@ -509,8 +509,7 @@ export default function WeddingRentalApp() {
 
     const nuevoEvento = {
       ...eventForm,
-      // eslint-disable-next-line react-hooks/purity
-      id: eventForm.id || Date.now(),
+      id: eventForm.id || crypto.randomUUID(),
       totalAlquiler,
       totalGeneral,
       fechaCotizacion: eventForm.fechaCotizacion || new Date().toISOString().split('T')[0],
@@ -802,7 +801,7 @@ export default function WeddingRentalApp() {
     }
 
     const newItem = {
-      id: editingRealInventoryItem ? editingRealInventoryItem.id : Date.now(),
+      id: editingRealInventoryItem ? editingRealInventoryItem.id : crypto.randomUUID(),
       nombre: formData.get('nombre'),
       categoria: formData.get('categoria'),
       marca: formData.get('marca') || '',
