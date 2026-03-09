@@ -63,8 +63,12 @@ export default function SignIn() {
         if (signUpError) throw signUpError;
 
         if (signUpData.user) {
-          // 3. Mark the invite code as consumed (security definer — runs even before email confirmation)
-          await supabase.rpc('use_invite_code', { code_str: inviteCode.trim().toUpperCase() });
+          // 3. Mark the invite code as consumed. Use _on_signup variant because when email
+          // confirmation is required, session is null so auth.uid() would be NULL in use_invite_code.
+          await supabase.rpc('use_invite_code_on_signup', {
+            code_str: inviteCode.trim().toUpperCase(),
+            new_user_id: signUpData.user.id,
+          });
 
           // Supabase may require email confirmation depending on project settings
           if (signUpData.session) {

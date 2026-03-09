@@ -380,3 +380,34 @@ begin
     and expires_at > now();
 end;
 $$;
+
+-- For signup flow when session may be null (email confirmation required).
+-- Accepts new_user_id explicitly; verifies user was created within last 5 minutes.
+create or replace function public.use_invite_code_on_signup(
+  code_str text,
+  new_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, pg_catalog
+as $$
+declare
+  user_created_at timestamptz;
+begin
+  select created_at into user_created_at
+  from auth.users where id = new_user_id;
+  if user_created_at is null then
+    raise exception 'invalid user';
+  end if;
+  if user_created_at < now() - interval '5 minutes' then
+    raise exception 'user must be newly created to consume invite code';
+  end if;
+
+  update public.invite_codes
+  set used_by = new_user_id
+  where code      = code_str
+    and used_by   is null
+    and expires_at > now();
+end;
+$$;
