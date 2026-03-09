@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import Navbar from '../../components/Navbar';
 
 export default function SignIn() {
   const [isLogin, setIsLogin] = useState(true);
@@ -90,18 +91,11 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar />
 
-        {/* Logo & back link */}
-        <div className="flex items-center justify-between mb-6">
-          <Link to="/" className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-700 transition">
-            <ArrowLeft size={16} /> Inicio
-          </Link>
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center transform rotate-3">
-            <span className="text-white font-bold text-xl">R</span>
-          </div>
-        </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-black text-slate-800">
@@ -217,6 +211,8 @@ export default function SignIn() {
             {isLogin ? 'Regístrate con código' : 'Iniciar Sesión'}
           </button>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );
