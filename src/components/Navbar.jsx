@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV_LINKS = [
-  { label: 'Catálogo',  href: '/#catalogo' },
-  { label: 'Nosotros',  href: '/about'     },
-  { label: 'Contacto',  href: '/contacto'  },
+  { label: 'Catálogo', href: '/catalogo' },
+  { label: 'Nosotros', href: '/about'    },
+  { label: 'Contacto', href: '/contacto' },
 ];
 
 export default function Navbar() {
