@@ -39,7 +39,7 @@ export default function About() {
           Acerca de <span className="text-indigo-600">Rentevent</span>
         </h1>
         <p className="text-slate-500 text-lg mb-10 leading-relaxed">
-          Somos una empresa dedicada al alquiler de mobiliario y decoración para eventos sociales y corporativos.
+          Somos una empresa colombiana con sede en Medellín, dedicada al alquiler de mobiliario y decoración para eventos sociales y corporativos.
         </p>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-5 mb-10">
