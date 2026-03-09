@@ -155,27 +155,28 @@ export function useAppData() {
     _setClientes(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       syncArrayToDB('clientes', prev, next, c => ({
-        id: String(c.id),
+        id: c.id,
         nombre: c.nombre,
         tipo: c.tipo,
         documento: c.documento
       })).then(async () => {
-        // Sync contacts
         const { added, updated } = getArrayDiff(prev, next);
         const changedClients = [...added, ...updated];
-        
+
         for (const client of changedClients) {
-          await supabase.from('contactos_cliente').delete().eq('cliente_id', String(client.id));
+          const { error: delErr } = await supabase.from('contactos_cliente').delete().eq('cliente_id', client.id);
+          if (delErr) console.error('Failed delete from contactos_cliente:', delErr);
+
           if (client.contactos && client.contactos.length > 0) {
             const contactsPayload = client.contactos.map(c => ({
-              id: String(c.id),
-              cliente_id: String(client.id),
-              nombre: c.nombre,
-              telefono: c.telefono,
-              email: c.email,
-              es_principal: c.esPrincipal || c.es_principal
+              cliente_id: client.id,
+              nombre: c.nombre ?? '',
+              telefono: c.telefono ?? null,
+              email: c.email ?? null,
+              es_principal: Boolean(c.esPrincipal ?? c.es_principal)
             }));
-            await supabase.from('contactos_cliente').insert(contactsPayload);
+            const { error } = await supabase.from('contactos_cliente').insert(contactsPayload);
+            if (error) console.error('Failed insert to contactos_cliente:', error);
           }
         }
       });
