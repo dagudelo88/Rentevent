@@ -72,8 +72,14 @@ export function useAppData() {
             nombre: c.nombre,
             tipo: c.tipo,
             documento: c.documento,
-            contactos: c.contactos_cliente || []
-          })));
+            contactos: (c.contactos_cliente || []).map(co => ({
+              id: co.id,
+              nombre: co.nombre,
+              telefono: co.telefono,
+              email: co.email,
+              esPrincipal: co.es_principal
+            }))
+          }));
         }
 
         if (dbConfig) {

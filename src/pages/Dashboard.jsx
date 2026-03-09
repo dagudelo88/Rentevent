@@ -606,7 +606,7 @@ export default function WeddingRentalApp() {
   // ... (handleSaveEvent, actualizarUsoInventario, etc. - staying same, need to be careful with line numbers)
   // Re-implementing handleClientSelect to check for contacts
   const handleClientSelect = (e) => {
-    const clienteId = Number(e.target.value);
+    const clienteId = e.target.value;
     const cliente = clientes.find(c => c.id === clienteId);
 
     if (cliente) {
@@ -657,7 +657,7 @@ export default function WeddingRentalApp() {
     }
 
     const newClient = {
-      id: editingClient ? editingClient.id : (clientes.length > 0 ? Math.max(...clientes.map(c => c.id)) + 1 : 1),
+      id: editingClient ? editingClient.id : crypto.randomUUID(),
       nombre: formData.get('nombre'),
       tipo: formData.get('tipo'),
       documento: formData.get('documento'),
@@ -685,7 +685,7 @@ export default function WeddingRentalApp() {
 
   const addContact = () => {
     const newContact = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       nombre: "",
       telefono: "",
       email: "",
@@ -1836,7 +1836,7 @@ export default function WeddingRentalApp() {
 
                           {!eventForm.organizadorIgualCliente && (
                             <select className="w-full border p-2 rounded bg-white mb-2 text-sm" value={eventForm.organizadorId || ''} onChange={(e) => {
-                              const orgId = Number(e.target.value);
+                              const orgId = e.target.value;
                               const org = clientes.find(c => c.id === orgId);
                               if (org) {
                                 const primaryContact = org.contactos?.find(c => c.esPrincipal) || org.contactos?.[0] || {};
