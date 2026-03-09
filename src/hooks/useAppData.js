@@ -59,8 +59,15 @@ export function useAppData() {
             return acc;
           }, {});
 
+          const clientNames = (dbClientes || []).reduce((acc, c) => {
+            acc[c.id] = c.nombre;
+            return acc;
+          }, {});
+
           const formattedEvents = dbEventos.map(ev => ({
             ...mapDBToEvent(ev),
+            cliente: clientNames[ev.cliente_id] ?? '',
+            organizador: clientNames[ev.organizador_id] ?? '',
             itemsSeleccionados: evItemsMap[ev.id] || []
           }));
           _setEventos(formattedEvents);

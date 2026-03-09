@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus, Trash2, Edit2, Save, X, Download, TrendingUp, Package, Truck,
@@ -247,9 +247,39 @@ export default function WeddingRentalApp() {
 
   
 
+  /** Enriches event with client/organizer contact data and item names/thumbnails for form display */
+  const enrichEventForForm = useCallback((evento) => {
+    const cliente = clientes.find((c) => c.id === evento.clienteId);
+    const org = clientes.find((c) => c.id === evento.organizadorId);
+    const primaryContact = (c) => c?.contactos?.find((co) => co.esPrincipal) || c?.contactos?.[0] || {};
+    const enriched = { ...evento };
+    if (cliente) {
+      const pc = primaryContact(cliente);
+      enriched.cliente = cliente.nombre;
+      enriched.clienteDocumento = cliente.documento ?? '';
+      enriched.clienteTelefono = pc.telefono ?? '';
+      enriched.clienteEmail = pc.email ?? '';
+    }
+    if (org) {
+      const po = primaryContact(org);
+      enriched.organizador = org.nombre;
+      enriched.organizadorDocumento = org.documento ?? '';
+      enriched.organizadorTelefono = po.telefono ?? '';
+      enriched.organizadorEmail = po.email ?? '';
+    }
+    enriched.organizadorIgualCliente = evento.clienteId === evento.organizadorId;
+    if (evento.itemsSeleccionados?.length) {
+      enriched.itemsSeleccionados = evento.itemsSeleccionados.map((sel) => {
+        const inv = realInventoryItems.find((i) => i.id === sel.itemId || i.id == sel.itemId);
+        return inv ? { ...sel, nombre: inv.nombre, imagenUrl: inv.imagenUrl } : sel;
+      });
+    }
+    return enriched;
+  }, [clientes, realInventoryItems]);
+
   const handleSaveSettings = (newSettings) => {
     setEventSettings(newSettings);
-    
+
   };
 
   const handleAlertChange = (key, value) => {
@@ -1483,7 +1513,7 @@ export default function WeddingRentalApp() {
                       <List size={18} />
                     </button>
                   </div>
-                  <button onClick={() => { resetEventForm(); setShowEventForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
+                  <button onClick={() => { setEditingEvent(null); resetEventForm(); setShowEventForm(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
                     <Plus size={18} /> Crear Cotización
                   </button>
                 </div>
@@ -1492,7 +1522,7 @@ export default function WeddingRentalApp() {
               {viewMode === 'list' ? (
                 <EventListView
                   events={eventos}
-                  onEdit={(ev) => { setEditingEvent(ev); setEventForm(ev); setShowEventForm(true); }}
+                  onEdit={(ev) => { setEditingEvent(ev); setEventForm(enrichEventForForm(ev)); setShowEventForm(true); }}
                   onDelete={handleDeleteEvent}
                   formatCurrency={formatoCOP}
                   settings={eventSettings}
@@ -1562,7 +1592,7 @@ export default function WeddingRentalApp() {
                             <div className="flex justify-between text-sm"><span className="text-slate-500">Total Cliente</span><span className="font-bold text-indigo-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
                           </div>
                           <div className="mt-4 flex gap-2">
-                            <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="flex-1 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg text-sm font-medium transition">Ver Detalle</button>
+                            <button onClick={() => { setEditingEvent(evento); setEventForm(enrichEventForForm(evento)); setShowEventForm(true); }} className="flex-1 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg text-sm font-medium transition">Ver Detalle</button>
                             <button onClick={() => handleDeleteEvent(evento)} className="px-3 text-red-500 hover:bg-red-50 border border-red-200 rounded-lg transition" title="Eliminar Evento">
                               <Trash2 size={16} />
                             </button>
@@ -1589,7 +1619,7 @@ export default function WeddingRentalApp() {
                           </span>
                         </div>
                         <div className="flex justify-between text-sm mb-4"><span className="text-slate-500">Total Final</span><span className="font-bold text-slate-600">{formatoCOP.format(evento.totalGeneral)}</span></div>
-                        <button onClick={() => { setEditingEvent(evento); setEventForm(evento); setShowEventForm(true); }} className="w-full border border-slate-300 text-slate-500 hover:bg-white py-1.5 rounded text-xs font-medium transition">Ver Detalle</button>
+                        <button onClick={() => { setEditingEvent(evento); setEventForm(enrichEventForForm(evento)); setShowEventForm(true); }} className="w-full border border-slate-300 text-slate-500 hover:bg-white py-1.5 rounded text-xs font-medium transition">Ver Detalle</button>
                       </div>
                     ))}
                   </div>
@@ -1940,6 +1970,12 @@ export default function WeddingRentalApp() {
                                 className={`flex flex-col border p-3 rounded-lg text-xs shadow-sm text-left group transition w-[145px] flex-shrink-0
                                   ${isAvailable ? "bg-white hover:border-indigo-500 hover:shadow-md cursor-pointer" : "bg-slate-100 opacity-60 cursor-not-allowed border-slate-200"}`}
                               >
+                                <div className="w-full aspect-square rounded overflow-hidden bg-slate-100 mb-2 flex items-center justify-center shrink-0 relative">
+                                  {item.imagenUrl ? (
+                                    <img src={item.imagenUrl} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; const s = e.target.nextElementSibling; if (s) s.style.opacity = '1'; }} />
+                                  ) : null}
+                                  <span className={`text-2xl absolute inset-0 flex items-center justify-center ${item.imagenUrl ? 'opacity-0' : ''}`} aria-hidden>📦</span>
+                                </div>
                                 <div className={`font-bold truncate w-full ${isAvailable ? "text-slate-700" : "text-slate-400"}`} title={item.nombre}>{item.nombre}</div>
                                 <div className="text-[10px] text-slate-500 mt-2 flex justify-between w-full">
                                   <span>Disp:</span>
@@ -1956,16 +1992,29 @@ export default function WeddingRentalApp() {
                       </div>
                       <div className="flex-1 overflow-y-auto border rounded-lg mb-4 p-2 bg-slate-50/30">
                         {eventForm.itemsSeleccionados.length === 0 && <div className="text-center text-slate-400 py-10 text-sm">No hay ítems seleccionados para este evento.</div>}
-                        {eventForm.itemsSeleccionados.map((selItem, idx) => (
-                          <div key={idx} className="flex justify-between items-center border-b border-slate-100 py-3 text-sm px-2 hover:bg-white transition">
-                            <span className="font-medium text-slate-700">{selItem.nombre}</span>
-                            <div className="flex items-center gap-3">
+                        {eventForm.itemsSeleccionados.map((selItem, idx) => {
+                          const invItem = realInventoryItems.find((i) => i.id === selItem.itemId || i.id == selItem.itemId);
+                          const displayName = selItem.nombre ?? invItem?.nombre ?? 'Ítem';
+                          return (
+                          <div key={selItem.itemId || idx} className="flex justify-between items-center border-b border-slate-100 py-3 text-sm px-2 hover:bg-white transition gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {invItem?.imagenUrl || selItem.imagenUrl ? (
+                                <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0 bg-slate-100">
+                                  <img src={invItem?.imagenUrl || selItem.imagenUrl} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 text-xs">📦</div>
+                              )}
+                              <span className="font-medium text-slate-700 truncate">{displayName}</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
                               <input type="number" value={selItem.cantidad} onChange={(e) => addItemToEvent({ id: selItem.itemId }, e.target.value)} className="w-16 border rounded text-center py-1" />
                               <span className="w-24 text-right font-bold text-slate-600">{formatoCOP.format(selItem.cantidad * selItem.precioUnitario)}</span>
                               <button onClick={() => removeItemFromEvent(selItem.itemId)} className="text-red-400 hover:text-red-600 p-1"><X size={16} /></button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <div className="bg-slate-800 text-white p-6 rounded-xl space-y-3 shadow-lg">
                         <div className="flex justify-between text-sm opacity-80"><span>Subtotal Items:</span> <span>{formatoCOP.format(eventForm.itemsSeleccionados.reduce((acc, i) => acc + (i.precioUnitario * i.cantidad), 0))}</span></div>
