@@ -522,14 +522,16 @@ export default function WeddingRentalApp() {
       return;
     }
 
-    // VALIDACIÓN DE STOCK (Solo si el estado reserva stock)
-    if (['Confirmado', 'Pago', 'Realizado & Pagado'].includes(eventForm.estado)) {
-      for (const item of eventForm.itemsSeleccionados) {
-        const available = calculateAvailability(item.itemId, eventForm.fecha, eventForm.fechaRecogida, editingEvent?.id);
-        if (Number(item.cantidad) > available) {
-          if (!confirm(`El ítem "${item.nombre}" supera la disponibilidad para estas fechas.\nSolicitado: ${item.cantidad}\nDisponible: ${available}\n\n¿Deseas guardar de todos modos (Sobreventa)?`)) {
-            return; // Cancelar guardado
-          }
+    // VALIDACIÓN DE STOCK para todos los estados
+    for (const item of eventForm.itemsSeleccionados) {
+      const available = calculateAvailability(item.itemId, eventForm.fecha, eventForm.fechaRecogida || eventForm.fecha, editingEvent?.id);
+      if (Number(item.cantidad) > available) {
+        const msg = `El ítem "${item.nombre ?? 'Ítem'}" supera la disponibilidad.\nSolicitado: ${item.cantidad}\nDisponible: ${available}`;
+        if (['Confirmado', 'Pago', 'Realizado & Pagado'].includes(eventForm.estado)) {
+          if (!confirm(`${msg}\n\n¿Deseas guardar de todos modos (Sobreventa)?`)) return;
+        } else {
+          alert(`${msg}\n\nPor favor ajusta la cantidad antes de guardar.`);
+          return;
         }
       }
     }
@@ -581,18 +583,34 @@ export default function WeddingRentalApp() {
   };
 
   const addItemToEvent = (item, qty) => {
-    const quantity = Number(qty);
-    if (quantity < 1) return;
+    let quantity = Math.max(1, Math.floor(Number(qty)));
+    if (!quantity || isNaN(quantity)) return;
 
-    const existing = eventForm.itemsSeleccionados.find(i => i.itemId === item.id);
+    const itemId = item.id ?? item.itemId;
+    const itemName = item.nombre ?? realInventoryItems.find((i) => i.id === itemId || i.id == itemId)?.nombre ?? 'Ítem';
+
+    const fechaRecogida = eventForm.fechaRecogida || eventForm.fecha;
+    const available = calculateAvailability(itemId, eventForm.fecha, fechaRecogida, editingEvent?.id);
+
+    if (available <= 0) {
+      alert(`No hay disponibilidad de "${itemName}" para las fechas seleccionadas.`);
+      return;
+    }
+
+    const cappedQty = Math.min(quantity, available);
+    if (cappedQty < quantity) {
+      alert(`Solo hay ${available} unidad(es) disponible(s) de "${itemName}" para estas fechas. Se ajustó la cantidad a ${cappedQty}.`);
+      quantity = cappedQty;
+    }
+
+    const existing = eventForm.itemsSeleccionados.find(i => i.itemId === itemId || i.itemId == itemId);
     if (existing) {
       setEventForm(prev => ({
         ...prev,
-        itemsSeleccionados: prev.itemsSeleccionados.map(i => i.itemId === item.id ? { ...i, cantidad: quantity } : i)
+        itemsSeleccionados: prev.itemsSeleccionados.map(i => (i.itemId === itemId || i.itemId == itemId) ? { ...i, cantidad: quantity } : i)
       }));
     } else {
-      // Buscar info actualizada en RealInventory si existe, sino usar la info pasada (legacy/ranking fallback)
-      const inventoryItem = realInventoryItems.find(r => r.id === item.id);
+      const inventoryItem = realInventoryItems.find(r => r.id === itemId || r.id == itemId);
       const itemToAdd = inventoryItem || item;
 
       setEventForm(prev => ({
