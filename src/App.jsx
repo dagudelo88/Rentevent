@@ -1,5 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Home from './pages/Home';
 import About from './pages/About';
 import Catalog from './pages/Catalog';
@@ -12,7 +14,8 @@ import { AdminRoute } from './components/Auth/AdminRoute';
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/catalogo" element={<Catalog />} />
@@ -39,5 +42,8 @@ export default function App() {
         } 
       />
     </Routes>
+    <Analytics />
+    <SpeedInsights />
+    </>
   );
 }
