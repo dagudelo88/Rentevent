@@ -81,13 +81,6 @@ export default function SignIn() {
     }
   };
 
-  const handleOAuth = async (provider) => {
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/app` },
-    });
-  };
-
   const switchMode = (login) => {
     setIsLogin(login);
     setError(null);
@@ -212,31 +205,6 @@ export default function SignIn() {
             {loading ? 'Procesando...' : isLogin ? 'Ingresar' : 'Crear Cuenta'}
           </button>
         </form>
-
-        {/* OAuth — only show for login */}
-        {isLogin && (
-          <>
-            <div className="mt-6 flex items-center justify-between before:content-[''] before:flex-1 before:border-t before:border-slate-200 after:content-[''] after:flex-1 after:border-t after:border-slate-200">
-              <span className="text-xs text-slate-400 font-bold px-4 uppercase tracking-wider">o continuar con</span>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button
-                onClick={() => handleOAuth('google')}
-                className="flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2 hover:bg-slate-50 transition"
-              >
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-                <span className="text-sm font-bold text-slate-700">Google</span>
-              </button>
-              <button
-                onClick={() => handleOAuth('github')}
-                className="flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2 hover:bg-slate-50 transition"
-              >
-                <img src="https://www.svgrepo.com/show/512317/github-142.svg" alt="GitHub" className="w-5 h-5" />
-                <span className="text-sm font-bold text-slate-700">GitHub</span>
-              </button>
-            </div>
-          </>
-        )}
 
         <div className="mt-8 text-center text-sm">
           <span className="text-slate-500">
