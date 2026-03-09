@@ -2,11 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import UnderConstructionBanner from '../components/UnderConstructionBanner';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
+      <UnderConstructionBanner />
 
       <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24 md:py-36 relative overflow-hidden">
         {/* Decorative blobs */}

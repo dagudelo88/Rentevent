@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, Mail, MapPin, Instagram } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import UnderConstructionBanner from '../components/UnderConstructionBanner';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const WHATSAPP_ICON = (
@@ -42,6 +43,7 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
+      <UnderConstructionBanner />
 
       <main className="flex-1 flex items-center justify-center px-6 py-16 md:py-24">
         <div className="w-full max-w-2xl">

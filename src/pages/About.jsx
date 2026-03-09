@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, Truck, HeartHandshake, Package } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import Navbar from '../components/Navbar';
+import UnderConstructionBanner from '../components/UnderConstructionBanner';
 
 const highlights = [
   {
@@ -33,6 +34,7 @@ export default function About() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
+      <UnderConstructionBanner />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12 md:py-16">
         <h1 className="text-4xl font-black text-slate-900 mb-3">

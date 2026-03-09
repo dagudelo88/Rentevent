@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Navbar from '../components/Navbar';
+import UnderConstructionBanner from '../components/UnderConstructionBanner';
 import { CATEGORIES, CATEGORY_STYLES, DEFAULT_CATEGORY_STYLE } from '../constants/inventory';
 
 const ALL_FILTER = 'Todos';
@@ -78,6 +79,7 @@ export default function Catalog() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
+      <UnderConstructionBanner />
 
       <main className="flex-1 px-6 py-12 md:py-16">
         <div className="max-w-6xl mx-auto">
