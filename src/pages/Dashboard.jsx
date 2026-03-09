@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import EventListView from '../components/EventListView';
 import { useAppData } from '../hooks/useAppData';
+import { useProductRanking } from '../hooks/useProductRanking';
 import { useAuth } from '../contexts/AuthContext';
 
 // --- CONFIGURACIÓN Y UTILERÍAS ---
@@ -35,155 +36,6 @@ const DEFAULT_APP_SETTINGS = {
   defaultQuoteValidity: 15 // days
 };
 
-// Datos combinados (Métricas cualitativas + Historial real)
-const DATOS_INICIALES = [
-  { id: 1, nombre: "Silla Tiffany Dorada", categoria: "Mobiliario (Sillas/Mesas)", costo: 85000, precioAlquiler: 5500, costoTransporte: 500, rotacion: 9, almacenamiento: 7, facilidadTransporte: 8, durabilidad: 6, cantidad: 200, vecesAlquilado: 15, ingresosHistoricos: 16500000 },
-  { id: 2, nombre: "Sala Lounge Chester (8 pax)", categoria: "Lounge & Salas", costo: 1800000, precioAlquiler: 400000, costoTransporte: 80000, rotacion: 6, almacenamiento: 3, facilidadTransporte: 2, durabilidad: 8, cantidad: 5, vecesAlquilado: 3, ingresosHistoricos: 1200000 },
-  { id: 3, nombre: "Plato Base Rattán", categoria: "Menaje & Vajilla", costo: 25000, precioAlquiler: 3500, costoTransporte: 100, rotacion: 8, almacenamiento: 8, facilidadTransporte: 9, durabilidad: 5, cantidad: 150, vecesAlquilado: 8, ingresosHistoricos: 4200000 },
-  { id: 4, nombre: "Mesa Madera Rústica", categoria: "Mobiliario (Sillas/Mesas)", costo: 450000, precioAlquiler: 65000, costoTransporte: 15000, rotacion: 7, almacenamiento: 4, facilidadTransporte: 5, durabilidad: 9, cantidad: 20, vecesAlquilado: 6, ingresosHistoricos: 7800000 },
-  { id: 5, nombre: "Copa Agua Cristal", categoria: "Menaje & Vajilla", costo: 12000, precioAlquiler: 1200, costoTransporte: 50, rotacion: 9, almacenamiento: 9, facilidadTransporte: 8, durabilidad: 4, cantidad: 300, vecesAlquilado: 25, ingresosHistoricos: 9000000 },
-  { id: 6, nombre: "Cubertería Dorada (Set 3pz)", categoria: "Menaje & Vajilla", costo: 45000, precioAlquiler: 4500, costoTransporte: 50, rotacion: 8, almacenamiento: 9, facilidadTransporte: 9, durabilidad: 7, cantidad: 200, vecesAlquilado: 12, ingresosHistoricos: 10800000 },
-  { id: 7, nombre: "Mesa Redonda (10 pax)", categoria: "Mobiliario (Sillas/Mesas)", costo: 250000, precioAlquiler: 35000, costoTransporte: 12000, rotacion: 8, almacenamiento: 5, facilidadTransporte: 6, durabilidad: 8, cantidad: 30, vecesAlquilado: 10, ingresosHistoricos: 10500000 },
-  { id: 8, nombre: "Mantel Blanco Jacquard", categoria: "Mantelería & Textiles", costo: 60000, precioAlquiler: 15000, costoTransporte: 2000, rotacion: 7, almacenamiento: 9, facilidadTransporte: 9, durabilidad: 6, cantidad: 50, vecesAlquilado: 20, ingresosHistoricos: 15000000 },
-  { id: 9, nombre: "Servilleta Tela Sand", categoria: "Mantelería & Textiles", costo: 8000, precioAlquiler: 1500, costoTransporte: 100, rotacion: 8, almacenamiento: 10, facilidadTransporte: 10, durabilidad: 5, cantidad: 400, vecesAlquilado: 18, ingresosHistoricos: 10800000 },
-  { id: 10, nombre: "Carpa 10x10 Blanca", categoria: "Estructuras & Carpas", costo: 5000000, precioAlquiler: 800000, costoTransporte: 200000, rotacion: 4, almacenamiento: 2, facilidadTransporte: 2, durabilidad: 7, cantidad: 2, vecesAlquilado: 5, ingresosHistoricos: 4000000 },
-  { id: 11, nombre: "Pista Baile LED (m2)", categoria: "Iluminación & Audio", costo: 350000, precioAlquiler: 60000, costoTransporte: 5000, rotacion: 6, almacenamiento: 6, facilidadTransporte: 7, durabilidad: 7, cantidad: 36, vecesAlquilado: 15, ingresosHistoricos: 32400000 },
-  { id: 12, nombre: "Centro Mesa Floral Artificial", categoria: "Decoración & Ambientación", costo: 120000, precioAlquiler: 35000, costoTransporte: 3000, rotacion: 5, almacenamiento: 4, facilidadTransporte: 6, durabilidad: 8, cantidad: 20, vecesAlquilado: 8, ingresosHistoricos: 5600000 },
-  { id: 13, nombre: "Silla Crossback Madera", categoria: "Mobiliario (Sillas/Mesas)", costo: 110000, precioAlquiler: 7500, costoTransporte: 600, rotacion: 8, almacenamiento: 6, facilidadTransporte: 7, durabilidad: 8, cantidad: 150, vecesAlquilado: 10, ingresosHistoricos: 11250000 },
-  { id: 14, nombre: "Plato Principal Loza Blanca", categoria: "Menaje & Vajilla", costo: 18000, precioAlquiler: 2000, costoTransporte: 100, rotacion: 9, almacenamiento: 8, facilidadTransporte: 7, durabilidad: 5, cantidad: 350, vecesAlquilado: 22, ingresosHistoricos: 15400000 },
-];
-
-const REAL_INVENTORY_INITIAL = [
-  { id: 1, nombre: "Silla Tiffany Dorada", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 200, costo: 85000, precioAlquiler: 5500, costoTransporte: 500 },
-  { id: 2, nombre: "Silla Tiffany Plateada", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 150, costo: 85000, precioAlquiler: 5500, costoTransporte: 500 },
-  { id: 3, nombre: "Silla Crossback Madera", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 120, costo: 110000, precioAlquiler: 7500, costoTransporte: 600 },
-  { id: 4, nombre: "Mesa Redonda 1.50m (10 pax)", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 30, costo: 250000, precioAlquiler: 35000, costoTransporte: 12000 },
-  { id: 5, nombre: "Mesa Rectangular 2.40m", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 15, costo: 300000, precioAlquiler: 45000, costoTransporte: 15000 },
-  { id: 6, nombre: "Mesa Madera Rústica", categoria: "Mobiliario (Sillas/Mesas)", cantidad: 20, costo: 450000, precioAlquiler: 65000, costoTransporte: 15000 },
-  { id: 7, nombre: "Sala Lounge Blanca (8 pax)", categoria: "Lounge & Salas", cantidad: 6, costo: 1800000, precioAlquiler: 400000, costoTransporte: 80000 },
-  { id: 8, nombre: "Sala Lounge Chester", categoria: "Lounge & Salas", cantidad: 4, costo: 2500000, precioAlquiler: 550000, costoTransporte: 90000 },
-  { id: 9, nombre: "Mantel Blanco Jacquard", categoria: "Mantelería & Textiles", cantidad: 60, costo: 60000, precioAlquiler: 15000, costoTransporte: 2000 },
-  { id: 10, nombre: "Servilleta Tela Sand", categoria: "Mantelería & Textiles", cantidad: 500, costo: 8000, precioAlquiler: 1500, costoTransporte: 100 },
-  { id: 11, nombre: "Camino de Mesa", categoria: "Mantelería & Textiles", cantidad: 80, costo: 25000, precioAlquiler: 8000, costoTransporte: 500 },
-  { id: 12, nombre: "Plato Base Rattán", categoria: "Menaje & Vajilla", cantidad: 180, costo: 25000, precioAlquiler: 3500, costoTransporte: 100 },
-  { id: 13, nombre: "Plato Principal Loza Blanca", categoria: "Menaje & Vajilla", cantidad: 400, costo: 18000, precioAlquiler: 2000, costoTransporte: 100 },
-  { id: 14, nombre: "Copa Agua Cristal", categoria: "Menaje & Vajilla", cantidad: 400, costo: 12000, precioAlquiler: 1200, costoTransporte: 50 },
-  { id: 15, nombre: "Copa Vino Cristal", categoria: "Menaje & Vajilla", cantidad: 400, costo: 12000, precioAlquiler: 1200, costoTransporte: 50 },
-  { id: 16, nombre: "Set Cubertería Dorada", categoria: "Menaje & Vajilla", cantidad: 250, costo: 45000, precioAlquiler: 4500, costoTransporte: 50 },
-  { id: 17, nombre: "Carpa 10x10 Blanca", categoria: "Estructuras & Carpas", cantidad: 3, costo: 5000000, precioAlquiler: 800000, costoTransporte: 200000 },
-  { id: 18, nombre: "Pista Baile LED (módulo)", categoria: "Iluminación & Audio", cantidad: 50, costo: 350000, precioAlquiler: 60000, costoTransporte: 5000 },
-  { id: 19, nombre: "Centro Mesa Floral Artif.", categoria: "Decoración & Ambientación", cantidad: 25, costo: 120000, precioAlquiler: 35000, costoTransporte: 3000 },
-  { id: 20, nombre: "Candelabro Dorado 5 Brazos", categoria: "Decoración & Ambientación", cantidad: 15, costo: 180000, precioAlquiler: 40000, costoTransporte: 2000 }
-];
-
-const EVENTOS_INICIALES = [
-  {
-    id: 101,
-    nombreEvento: "Boda Laura & Andrés",
-    cliente: "Laura & Andrés",
-    fecha: "2026-03-15",
-    lugar: "Jardín Botánico",
-    telefono: "300 123 4567",
-    estado: "Confirmado",
-    itemsSeleccionados: [
-      { itemId: 1, nombre: "Silla Tiffany Dorada", cantidad: 80, precioUnitario: 5500 },
-      { itemId: 4, nombre: "Mesa Madera Rústica", cantidad: 8, precioUnitario: 65000 },
-      { itemId: 5, nombre: "Copa Agua Cristal", cantidad: 80, precioUnitario: 1200 }
-    ],
-    costoTransporte: 180000,
-    depositoSeguridad: 500000,
-    totalAlquiler: 1056000,
-    totalGeneral: 1736000,
-    notas: "Entrega por la puerta norte."
-  },
-  {
-    id: 102,
-    nombreEvento: "15 Años Sofía",
-    cliente: "Familia Gómez",
-    fecha: "2026-04-20",
-    lugar: "Salón Social El Poblado",
-    telefono: "310 987 6543",
-    estado: "Cotizado",
-    itemsSeleccionados: [
-      { itemId: 2, nombre: "Sala Lounge Chester (8 pax)", cantidad: 2, precioUnitario: 400000 },
-      { itemId: 11, nombre: "Pista Baile LED (m2)", cantidad: 16, precioUnitario: 60000 },
-      { itemId: 12, nombre: "Centro Mesa Floral Artificial", cantidad: 4, precioUnitario: 35000 }
-    ],
-    costoTransporte: 120000,
-    depositoSeguridad: 300000,
-    totalAlquiler: 1900000,
-    totalGeneral: 2320000,
-    notas: "Pendiente confirmar medidas del salón."
-  },
-  {
-    id: 103,
-    nombreEvento: "Evento Corporativo Bancolombia",
-    cliente: "Bancolombia S.A.",
-    fecha: "2025-12-10",
-    lugar: "Plaza Mayor",
-    telefono: "320 555 1234",
-    estado: "Realizado & Pagado",
-    itemsSeleccionados: [
-      { itemId: 1, nombre: "Silla Tiffany Dorada", cantidad: 200, precioUnitario: 5500 },
-      { itemId: 7, nombre: "Mesa Redonda (10 pax)", cantidad: 20, precioUnitario: 35000 },
-      { itemId: 8, nombre: "Mantel Blanco Jacquard", cantidad: 20, precioUnitario: 15000 }
-    ],
-    costoTransporte: 250000,
-    depositoSeguridad: 1000000,
-    totalAlquiler: 2100000,
-    totalGeneral: 3350000,
-    notas: "Todo entregado ok."
-  },
-  {
-    id: 104,
-    nombreEvento: "Cumpleaños 50 Carlos",
-    cliente: "Carlos Ruiz",
-    fecha: "2026-02-14",
-    lugar: "Casa Campestre Llanogrande",
-    telefono: "315 222 3344",
-    estado: "Cancelado",
-    itemsSeleccionados: [
-      { itemId: 10, nombre: "Carpa 10x10 Blanca", cantidad: 1, precioUnitario: 800000 },
-      { itemId: 13, nombre: "Silla Crossback Madera", cantidad: 50, precioUnitario: 7500 }
-    ],
-    costoTransporte: 300000,
-    depositoSeguridad: 600000,
-    totalAlquiler: 1175000,
-    totalGeneral: 2075000,
-    notas: "Cancelado por lluvia pronosticada."
-  }
-];
-
-const CLIENTES_INICIALES = [
-  {
-    id: 1,
-    nombre: "Laura & Andrés",
-    tipo: "Cliente",
-    documento: "10203040",
-    contactos: [
-      { id: 1, nombre: "Laura", telefono: "300 123 4567", email: "laura@example.com", esPrincipal: true },
-      { id: 2, nombre: "Andrés", telefono: "300 765 4321", email: "andres@example.com", esPrincipal: false }
-    ]
-  },
-  {
-    id: 2,
-    nombre: "Bancolombia S.A.",
-    tipo: "Corporativo",
-    documento: "900.123.456",
-    contactos: [
-      { id: 1, nombre: "Ana Eventos", telefono: "320 555 1234", email: "eventos@bancolombia.com", esPrincipal: true }
-    ]
-  },
-  {
-    id: 3,
-    nombre: "Wedding Planner Ana",
-    tipo: "Organizador",
-    documento: "43.567.890",
-    contactos: [
-      { id: 1, nombre: "Ana María", telefono: "315 987 6543", email: "ana@planner.com", esPrincipal: true }
-    ]
-  }
-];
 
 const formatoCOP = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -347,8 +199,9 @@ export default function WeddingRentalApp() {
   const [activeTab, setActiveTab] = useState('inventory');
   const { user, isAdmin, signOut } = useAuth();
 
+  const { rankingItems, saveRankingItem, deleteRankingItem } = useProductRanking();
+
   const {
-    items, setItems,
     eventos, setEventos,
     clientes, setClientes,
     pesos: rawPesos, setPesos,
@@ -451,7 +304,7 @@ export default function WeddingRentalApp() {
   };
 
   const sortedItems = useMemo(() => {
-    let sortableItems = [...items];
+    let sortableItems = [...rankingItems];
     if (sortConfig.key) {
       sortableItems.sort((a, b) => {
         let aValue, bValue;
@@ -484,7 +337,7 @@ export default function WeddingRentalApp() {
       });
     }
     return sortableItems;
-  }, [items, sortConfig, pesos, eventSettings?.scoreColors]);
+  }, [rankingItems, sortConfig, pesos, eventSettings?.scoreColors]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -856,12 +709,13 @@ export default function WeddingRentalApp() {
     })));
   };
 
-  // --- HANDLERS (Inventario) ---
+  // --- HANDLERS (Product Ranking) ---
   const handleSaveItem = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const newItem = {
-      id: editingItem ? editingItem.id : Date.now(),
+    const item = {
+      // id is omitted for new items so Supabase generates a valid UUID
+      ...(editingItem ? { id: editingItem.id } : {}),
       nombre: formData.get('nombre'),
       imageUrl: formData.get('imageUrl'),
       purchaseLink: formData.get('purchaseLink'),
@@ -875,12 +729,10 @@ export default function WeddingRentalApp() {
       facilidadTransporte: Number(formData.get('facilidadTransporte')),
       durabilidad: Number(formData.get('durabilidad')),
       vecesAlquilado: editingItem ? editingItem.vecesAlquilado : 0,
-      ingresosHistoricos: editingItem ? editingItem.ingresosHistoricos : 0
+      ingresosHistoricos: editingItem ? editingItem.ingresosHistoricos : 0,
     };
 
-    if (editingItem) setItems(prev => prev.map(i => i.id === editingItem.id ? newItem : i));
-    else setItems(prev => [...prev, newItem]);
-
+    saveRankingItem(item);
     setShowItemForm(false);
     setEditingItem(null);
   };
@@ -1445,7 +1297,7 @@ export default function WeddingRentalApp() {
                             <td className="p-4 text-right">
                               <div className="flex justify-end gap-1">
                                 <button onClick={() => { setEditingItem(item); setShowItemForm(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded"><Edit2 size={16} /></button>
-                                <button onClick={() => { if (window.confirm('Eliminar?')) setItems(prev => prev.filter(i => i.id !== item.id)) }} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
+                                <button onClick={() => { if (window.confirm('Eliminar?')) deleteRankingItem(item.id); }} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>

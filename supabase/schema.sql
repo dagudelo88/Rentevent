@@ -48,13 +48,17 @@ create policy "Admins can insert profiles."
   with check ( public.get_my_role() = 'admin' OR id = auth.uid() );
 
 -- Trigger to handle updated_at
+-- search_path is pinned for deterministic name resolution (defence-in-depth).
 create or replace function public.handle_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = public, pg_catalog
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS on_profiles_updated ON public.profiles;
 create trigger on_profiles_updated
@@ -234,7 +238,50 @@ create policy "Users manage their own evento_items"
   );
 
 -- ==========================================
--- 7. App Configurations
+-- 7. Product Ranking
+-- Separate from inventory: used to evaluate and categorize
+-- items to buy. Has ranking-specific fields (image_url,
+-- purchase_link) and qualitative scoring metrics.
+-- ==========================================
+
+create table if not exists public.producto_ranking (
+  id                   uuid default uuid_generate_v4() primary key,
+  user_id              uuid references public.profiles(id) on delete cascade not null,
+  nombre               text not null,
+  categoria            text not null,
+  costo                numeric default 0 not null,
+  precio_alquiler      numeric default 0 not null,
+  costo_transporte     numeric default 0 not null,
+  -- Qualitative scoring metrics (1-10 scale)
+  rotacion             integer default 5 not null,
+  almacenamiento       integer default 5 not null,
+  facilidad_transporte integer default 5 not null,
+  durabilidad          integer default 5 not null,
+  -- Reference quantities / historical data
+  cantidad             integer default 0 not null,
+  veces_alquilado      integer default 0 not null,
+  ingresos_historicos  numeric default 0 not null,
+  -- Ranking-specific metadata (not present in inventory)
+  image_url            text,
+  purchase_link        text,
+  created_at           timestamptz default now() not null,
+  updated_at           timestamptz default now() not null
+);
+
+alter table public.producto_ranking enable row level security;
+
+DROP POLICY IF EXISTS "Users manage their own producto_ranking" ON public.producto_ranking;
+create policy "Users manage their own producto_ranking"
+  on public.producto_ranking for all
+  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
+
+DROP TRIGGER IF EXISTS on_producto_ranking_updated ON public.producto_ranking;
+create trigger on_producto_ranking_updated
+  before update on public.producto_ranking
+  for each row execute procedure public.handle_updated_at();
+
+-- ==========================================
+-- 8. App Configurations
 -- ==========================================
 
 create table if not exists public.configuraciones (
@@ -270,20 +317,25 @@ returns text
 language sql
 security definer
 stable
+set search_path = public, pg_catalog
 as $$
   select role::text from public.profiles where id = auth.uid();
 $$;
 
 -- Auto-create a profile row when a new auth user is inserted
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
 begin
   insert into public.profiles (id, email, role)
   values (new.id, new.email, 'user'::user_role)
   on conflict (id) do nothing;
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 create trigger on_auth_user_created
@@ -291,18 +343,21 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- Function to validate invite code without needing full read access to invite_codes table
+-- search_path is pinned to prevent search_path hijacking (SECURITY DEFINER safety).
 create or replace function public.validate_invite_code(code_str text)
 returns boolean
-language plpgsql security definer
+language plpgsql
+security definer
+set search_path = public, pg_catalog
 as $$
 declare
   is_valid boolean;
 begin
   select exists (
-    select 1 
-    from public.invite_codes 
-    where code = code_str 
-      and used_by is null 
+    select 1
+    from public.invite_codes
+    where code      = code_str
+      and used_by   is null
       and expires_at > now()
   ) into is_valid;
   return is_valid;
@@ -310,15 +365,18 @@ end;
 $$;
 
 -- Function to consume invite code by the authenticated user
+-- search_path is pinned to prevent search_path hijacking (SECURITY DEFINER safety).
 create or replace function public.use_invite_code(code_str text)
 returns void
-language plpgsql security definer
+language plpgsql
+security definer
+set search_path = public, pg_catalog
 as $$
 begin
   update public.invite_codes
   set used_by = auth.uid()
-  where code = code_str 
-    and used_by is null 
+  where code    = code_str
+    and used_by is null
     and expires_at > now();
 end;
 $$;

@@ -16,7 +16,6 @@ function getArrayDiff(prev, next) {
 export function useAppData() {
   const { user } = useAuth();
   
-  const [items, _setItems] = useState([]);
   const [eventos, _setEventos] = useState([]);
   const [clientes, _setClientes] = useState([]);
   const [pesos, setPesos] = useState(null);
@@ -45,9 +44,7 @@ export function useAppData() {
         ]);
 
         if (dbItems) {
-          const mappedItems = dbItems.map(mapDBToItem);
-          _setItems(mappedItems);
-          _setRealInventoryItems(mappedItems);
+          _setRealInventoryItems(dbItems.map(mapDBToItem));
         }
         
         if (dbEventos) {
@@ -117,14 +114,6 @@ export function useAppData() {
       if (error) console.error(`Failed delete from ${table}:`, error);
     }
   }, [user]);
-
-  const setItems = useCallback((updater) => {
-    _setItems(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      syncArrayToDB('inventario', prev, next, mapItemToDB);
-      return next;
-    });
-  }, [syncArrayToDB]);
 
   const setRealInventoryItems = useCallback((updater) => {
     _setRealInventoryItems(prev => {
@@ -206,7 +195,6 @@ export function useAppData() {
   };
 
   return {
-    items, setItems,
     eventos, setEventos,
     clientes, setClientes,
     pesos, setPesos: savePesos,
