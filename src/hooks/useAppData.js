@@ -67,18 +67,15 @@ export function useAppData() {
         }
 
         if (dbClientes) {
-          _setClientes(dbClientes.map(c => ({
-            id: c.id,
-            nombre: c.nombre,
-            tipo: c.tipo,
-            documento: c.documento,
-            contactos: (c.contactos_cliente || []).map(co => ({
+          _setClientes(dbClientes.map(c => {
+            const contactos = (c.contactos_cliente || []).map(co => ({
               id: co.id,
               nombre: co.nombre,
               telefono: co.telefono,
               email: co.email,
               esPrincipal: co.es_principal
-            }))
+            }));
+            return { id: c.id, nombre: c.nombre, tipo: c.tipo, documento: c.documento, contactos };
           }));
         }
 
