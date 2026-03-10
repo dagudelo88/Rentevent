@@ -22,6 +22,7 @@ export function useAppData() {
   const [appSettings, setAppSettings] = useState(null);
   const [eventSettings, setEventSettings] = useState(null);
   const [realInventoryItems, _setRealInventoryItems] = useState([]);
+  const [cotizaciones, setCotizaciones] = useState([]);
   
   const [loading, setLoading] = useState(true);
 
@@ -35,12 +36,15 @@ export function useAppData() {
           { data: dbItems }, 
           { data: dbEventos }, 
           { data: dbClientes },
-          { data: dbConfig }
+          { data: dbConfig },
+          { data: dbCotizaciones }
         ] = await Promise.all([
           supabase.from('inventario').select('*').eq('user_id', user.id),
           supabase.from('eventos').select('*').eq('user_id', user.id),
           supabase.from('clientes').select('*, contactos_cliente(*)').eq('user_id', user.id),
-          supabase.from('configuraciones').select('*').eq('user_id', user.id).maybeSingle()
+          supabase.from('configuraciones').select('*').eq('user_id', user.id).maybeSingle(),
+          // Cotizaciones doesn't have a direct user_id, we fetch all that belong to this user's eventos via RLS or a join. Since RLS handles it, we can just select '*'.
+          supabase.from('cotizaciones').select('*')
         ]);
 
         if (dbItems) {
@@ -51,11 +55,15 @@ export function useAppData() {
           const { data: dbEventoItems } = await supabase.from('evento_items').select('*');
           const evItemsMap = (dbEventoItems || []).reduce((acc, curr) => {
             if (!acc[curr.evento_id]) acc[curr.evento_id] = [];
-            acc[curr.evento_id].push({
-              itemId: curr.item_id,
-              cantidad: curr.cantidad,
-              precioUnitario: curr.precio_unitario
-            });
+            const itemKey = String(curr.item_id);
+            const existing = acc[curr.evento_id].find(i => String(i.itemId) === itemKey);
+            if (!existing) {
+              acc[curr.evento_id].push({
+                itemId: curr.item_id,
+                cantidad: curr.cantidad,
+                precioUnitario: curr.precio_unitario
+              });
+            }
             return acc;
           }, {});
 
@@ -90,6 +98,10 @@ export function useAppData() {
           if (dbConfig.pesos) setPesos(dbConfig.pesos);
           if (dbConfig.app_settings) setAppSettings(dbConfig.app_settings);
           if (dbConfig.event_settings) setEventSettings(dbConfig.event_settings);
+        }
+
+        if (dbCotizaciones) {
+          setCotizaciones(dbCotizaciones.map(mapDBCotizacion));
         }
 
       } catch (err) {
@@ -144,9 +156,16 @@ export function useAppData() {
         for (const ev of changedEvents) {
           await supabase.from('evento_items').delete().eq('evento_id', String(ev.id));
           if (ev.itemsSeleccionados && ev.itemsSeleccionados.length > 0) {
-            const payload = ev.itemsSeleccionados.map(i => ({
+            const seen = new Set();
+            const deduped = ev.itemsSeleccionados.filter((i) => {
+              const key = String(i.itemId || i.id);
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            const payload = deduped.map(i => ({
               evento_id: String(ev.id),
-              item_id: String(i.itemId),
+              item_id: String(i.itemId || i.id),
               cantidad: i.cantidad,
               precio_unitario: i.precioUnitario
             }));
@@ -205,6 +224,45 @@ export function useAppData() {
     if (user) await supabase.from('configuraciones').upsert({ user_id: user.id, event_settings: newSettings });
   };
 
+  // Cotizaciones savers
+  const saveCotizacionVersion = async (eventoId, version, itemsSnapshot, total, notasVersion = '') => {
+    if (!user) return null;
+    const payload = {
+      evento_id: String(eventoId),
+      version,
+      items_snapshot: itemsSnapshot,
+      total,
+      estado: 'Pendiente',
+      notas_version: notasVersion
+    };
+    
+    const { data, error } = await supabase.from('cotizaciones').insert([payload]).select().single();
+    if (error) {
+       console.error("Failed to save cotizacion", error);
+       return null;
+    }
+    
+    if (data) {
+       setCotizaciones(prev => [...prev, mapDBCotizacion(data)]);
+    }
+    return data;
+  };
+
+  const updateCotizacionStatus = async (cotizacionId, newStatus) => {
+    if (!user) return;
+    const { error } = await supabase.from('cotizaciones')
+        .update({ estado: newStatus })
+        .eq('id', cotizacionId);
+        
+    if (error) {
+        console.error("Failed to update cotizacion status", error);
+        return;
+    }
+    
+    setCotizaciones(prev => prev.map(c => c.id === cotizacionId ? { ...c, estado: newStatus } : c));
+  };
+
+
   return {
     eventos, setEventos,
     clientes, setClientes,
@@ -212,6 +270,7 @@ export function useAppData() {
     appSettings, setAppSettings: saveAppSettings,
     eventSettings, setEventSettings: saveEventSettings,
     realInventoryItems, setRealInventoryItems,
+    cotizaciones, saveCotizacionVersion, updateCotizacionStatus,
     loading
   };
 }
@@ -308,5 +367,19 @@ function mapEventToDB(ev) {
     fecha_pago: ev.fechaPago,
     comprobante_pago: ev.comprobantePago,
     cotizacion_enviada: ev.cotizacionEnviada
+  };
+}
+
+function mapDBCotizacion(row) {
+  return {
+    id: row.id,
+    eventoId: row.evento_id,
+    version: row.version,
+    itemsSnapshot: row.items_snapshot,
+    total: row.total,
+    estado: row.estado,
+    notasVersion: row.notas_version,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }

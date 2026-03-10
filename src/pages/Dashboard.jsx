@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Plus, Trash2, Edit2, Save, X, Download, TrendingUp, Package, Truck,
-  AlertCircle, Settings, RotateCcw, Calendar, Users, FileText, CheckCircle,
-  DollarSign, MapPin, Phone, Calculator, Search, Clock, CheckSquare, List, Grid, Box,
-  Shield, LogOut,
+  Key, Users, RefreshCw, Plus, CheckCircle, Clock, Copy, Trash2,
+  ArrowLeft, Shield, AlertTriangle, LayoutDashboard, Phone, Mail,
+  MapPin, Instagram, Save, Globe, Info, Menu, Play, X, Search, MoreVertical, SearchIcon, AlertCircle, FileText, Check, Settings, Eye, LogOut, FileSearch, HelpCircle, Archive, ArrowRight, TrendingUp, Calendar, Box, Package, Activity, Loader2, Download, Truck, DollarSign, CheckSquare, Edit2, RotateCcw, Calculator, List, Grid
 } from 'lucide-react';
 import EventListView from '../components/EventListView';
 import { useAppData } from '../hooks/useAppData';
 import { useProductRanking } from '../hooks/useProductRanking';
 import { useAuth } from '../contexts/AuthContext';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+import { generateQuotePDF } from '../utils/generateQuotePDF';
 
 // --- CONFIGURACIÓN Y UTILERÍAS ---
 
@@ -208,8 +209,11 @@ export default function WeddingRentalApp() {
     appSettings: rawAppSettings, setAppSettings,
     eventSettings: rawEventSettings, setEventSettings,
     realInventoryItems, setRealInventoryItems,
+    cotizaciones, saveCotizacionVersion, updateCotizacionStatus,
     loading
   } = useAppData();
+
+  const { contact: siteContactSettings } = useSiteSettings();
 
   const pesos = rawPesos || DEFAULT_WEIGHTS;
   const eventSettings = rawEventSettings || DEFAULT_EVENT_SETTINGS;
@@ -270,7 +274,8 @@ export default function WeddingRentalApp() {
     enriched.organizadorIgualCliente = evento.clienteId === evento.organizadorId;
     if (evento.itemsSeleccionados?.length) {
       enriched.itemsSeleccionados = evento.itemsSeleccionados.map((sel) => {
-        const inv = realInventoryItems.find((i) => i.id === sel.itemId || i.id == sel.itemId);
+        const selId = sel.itemId || sel.id;
+        const inv = realInventoryItems.find((i) => String(i.id) === String(selId));
         return inv ? { ...sel, nombre: inv.nombre, imagenUrl: inv.imagenUrl } : sel;
       });
     }
@@ -367,7 +372,7 @@ export default function WeddingRentalApp() {
       });
     }
     return sortableItems;
-  }, [rankingItems, sortConfig, pesos, eventSettings?.scoreColors]);
+  }, [rankingItems, sortConfig, pesos, eventSettings.scoreColors]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -379,6 +384,8 @@ export default function WeddingRentalApp() {
 
   // Event Form State
   const [eventItemSearch, setEventItemSearch] = useState('');
+  const [eventFormTab, setEventFormTab] = useState('details'); // details | quotes
+
   const [eventForm, setEventForm] = useState({
     id: null, nombreEvento: '',
     clienteId: '', cliente: '', clienteDocumento: '', clienteTelefono: '', clienteEmail: '',
@@ -422,12 +429,15 @@ export default function WeddingRentalApp() {
 
   useEffect(() => {
     if (showItemForm) {
-      setSliderValues({
-        rotacion: editingItem?.rotacion || 5,
-        almacenamiento: editingItem?.almacenamiento || 5,
-        facilidadTransporte: editingItem?.facilidadTransporte || 5,
-        durabilidad: editingItem?.durabilidad || 5
-      });
+      const timer = setTimeout(() => {
+        setSliderValues({
+          rotacion: editingItem?.rotacion || 5,
+          almacenamiento: editingItem?.almacenamiento || 5,
+          facilidadTransporte: editingItem?.facilidadTransporte || 5,
+          durabilidad: editingItem?.durabilidad || 5
+        });
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [showItemForm, editingItem]);
 
@@ -603,20 +613,25 @@ export default function WeddingRentalApp() {
       quantity = cappedQty;
     }
 
-    const existing = eventForm.itemsSeleccionados.find(i => i.itemId === itemId || i.itemId == itemId);
+    const existing = eventForm.itemsSeleccionados.find(i => String(i.itemId) === String(itemId) || String(i.id) === String(itemId));
+    
     if (existing) {
       setEventForm(prev => ({
         ...prev,
-        itemsSeleccionados: prev.itemsSeleccionados.map(i => (i.itemId === itemId || i.itemId == itemId) ? { ...i, cantidad: quantity } : i)
+        itemsSeleccionados: prev.itemsSeleccionados.map(i => 
+          (String(i.itemId) === String(itemId) || String(i.id) === String(itemId)) 
+            ? { ...i, cantidad: quantity } 
+            : i
+        )
       }));
     } else {
-      const inventoryItem = realInventoryItems.find(r => r.id === itemId || r.id == itemId);
+      const inventoryItem = realInventoryItems.find(r => String(r.id) === String(itemId));
       const itemToAdd = inventoryItem || item;
 
       setEventForm(prev => ({
         ...prev,
         itemsSeleccionados: [...prev.itemsSeleccionados, {
-          itemId: itemToAdd.id,
+          itemId: itemToAdd.id || itemToAdd.itemId,
           nombre: itemToAdd.nombre,
           cantidad: quantity,
           precioUnitario: itemToAdd.precioAlquiler
@@ -645,6 +660,7 @@ export default function WeddingRentalApp() {
       horaRecogida: '',
       fechaPago: '', comprobantePago: '', cotizacionEnviada: false
     });
+    setEventFormTab('details');
   };
 
   const [clientContacts, setClientContacts] = useState([]);
@@ -722,11 +738,14 @@ export default function WeddingRentalApp() {
   // Effect to load contacts when editing
   useEffect(() => {
     if (showClientForm) {
-      if (editingClient && editingClient.contactos) {
-        setClientContacts(editingClient.contactos);
-      } else {
-        setClientContacts([]);
-      }
+      const timer = setTimeout(() => {
+        if (editingClient && editingClient.contactos) {
+          setClientContacts(editingClient.contactos);
+        } else {
+          setClientContacts([]);
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [showClientForm, editingClient]);
 
@@ -1789,9 +1808,15 @@ export default function WeddingRentalApp() {
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col relative">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
                   <h3 className="text-xl font-bold text-slate-800">{editingEvent ? 'Editar Evento' : 'Nueva Cotización'}</h3>
+                  <div className="flex bg-white border border-slate-200 rounded-lg p-1 mx-4">
+                    <button onClick={() => setEventFormTab('details')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${eventFormTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Configuración e Ítems</button>
+                    <button onClick={() => setEventFormTab('quotes')} disabled={!editingEvent} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition ${!editingEvent ? 'opacity-50 cursor-not-allowed' : ''} ${eventFormTab === 'quotes' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>Historial Cotizaciones</button>
+                  </div>
                   <button onClick={() => setShowEventForm(false)} className="text-slate-400 hover:text-red-500"><X size={24} /></button>
                 </div>
                 <div className="flex-1 overflow-auto p-6">
+                {eventFormTab === 'details' ? (
+                  <>
                   {/* HEADER & INFO GENERAL */}
                   <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -2014,7 +2039,7 @@ export default function WeddingRentalApp() {
                           const invItem = realInventoryItems.find((i) => i.id === selItem.itemId || i.id == selItem.itemId);
                           const displayName = selItem.nombre ?? invItem?.nombre ?? 'Ítem';
                           return (
-                          <div key={selItem.itemId || idx} className="flex justify-between items-center border-b border-slate-100 py-3 text-sm px-2 hover:bg-white transition gap-2">
+                          <div key={`${selItem.itemId || selItem.id}-${idx}`} className="flex justify-between items-center border-b border-slate-100 py-3 text-sm px-2 hover:bg-white transition gap-2">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                               {invItem?.imagenUrl || selItem.imagenUrl ? (
                                 <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0 bg-slate-100">
@@ -2046,6 +2071,88 @@ export default function WeddingRentalApp() {
                       </div>
                     </div>
                   </div>
+                  </>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-bold text-slate-800">Versiones de Cotización</h4>
+                      <button 
+                         onClick={async () => {
+                           if (!editingEvent?.id) return;
+                           const currentTotal = eventForm.itemsSeleccionados.reduce((acc, i) => acc + (i.precioUnitario * i.cantidad), 0) + Number(eventForm.costoTransporte) + Number(eventForm.depositoSeguridad);
+                           const eventCots = cotizaciones.filter(c => String(c.eventoId) === String(editingEvent.id));
+                           const nextVersion = eventCots.length > 0 ? Math.max(...eventCots.map(c => c.version)) + 1 : 1;
+                           
+                           await saveCotizacionVersion(editingEvent.id, nextVersion, eventForm.itemsSeleccionados, currentTotal);
+                           alert("Nueva versión guardada correctamente.");
+                         }}
+                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+                      >
+                         <Save size={16} /> Generar Nueva Versión
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {cotizaciones.filter(c => String(c.eventoId) === String(editingEvent?.id)).sort((a,b) => b.version - a.version).map(cot => (
+                        <div key={cot.id} className={`bg-white border rounded-xl p-5 shadow-sm relative overflow-hidden transition ${cot.estado === 'Aceptada' ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200'}`}>
+                           {cot.estado === 'Aceptada' && <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-lg">Aceptada</div>}
+                           {cot.estado === 'Rechazada' && <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-lg">Rechazada</div>}
+
+                           <div className="flex justify-between items-center mb-4">
+                              <div className="flex items-center gap-3">
+                                 <div className="bg-indigo-100 text-indigo-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-lg">v{cot.version}</div>
+                                 <div className="flex flex-col">
+                                    <span className="font-bold text-slate-800 text-sm">{new Date(cot.createdAt).toLocaleString()}</span>
+                                    <span className="text-xs text-slate-500 font-mono">ID: {cot.id.substring(0,8).toUpperCase()}</span>
+                                 </div>
+                              </div>
+                              <div className="text-right">
+                                 <div className="text-lg font-black text-slate-800">{formatoCOP.format(cot.total)}</div>
+                                 <div className="text-xs text-slate-400">{cot.itemsSnapshot?.length || 0} ítems en estado</div>
+                              </div>
+                           </div>
+
+                           <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+                             <button onClick={() => generateQuotePDF(cot, eventForm, siteContactSettings, 'view')} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition"><FileText size={14} /> Ver PDF</button>
+                             <button onClick={() => generateQuotePDF(cot, eventForm, siteContactSettings, 'download')} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition"><Download size={14} /> Descargar</button>
+                             <button 
+                               onClick={() => {
+                                 const phoneMsg = eventForm.clienteTelefono ? eventForm.clienteTelefono.replace(/\D/g, '') : '';
+                                 const finalPhone = phoneMsg.length > 5 ? (phoneMsg.startsWith('57') ? phoneMsg : `57${phoneMsg}`) : '';
+                                 const msg = encodeURIComponent(`Hola ${eventForm.cliente},\n\nAquí tienes la versión ${cot.version} de tu cotización para el evento "${eventForm.nombreEvento}". \n\nPor favor revísala y cuéntanos qué te parece.`);
+                                 window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank');
+                               }} 
+                               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100 transition"
+                             >
+                               <Phone size={14} /> WhatsApp
+                             </button>
+                             <a 
+                               href={`mailto:${eventForm.clienteEmail}?subject=Cotización v${cot.version} - ${eventForm.nombreEvento}&body=Hola ${encodeURIComponent(eventForm.cliente)},%0D%0A%0D%0AAdjunto a este correo encontrarás el PDF con la cotización v${cot.version}.%0D%0A%0D%0A¡Quedamos atentos a tus comentarios!`}
+                               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
+                             >
+                               <Mail size={14} /> Email
+                             </a>
+                             
+                             <div className="flex-1"></div>
+                             
+                            {cot.estado !== 'Aceptada' && (
+                              <button type="button" onClick={() => updateCotizacionStatus(cot.id, 'Aceptada')} className="text-xs text-emerald-600 hover:underline font-bold mr-2">Marcar Aceptada</button>
+                            )}
+                            {cot.estado !== 'Rechazada' && (
+                              <button type="button" onClick={() => updateCotizacionStatus(cot.id, 'Rechazada')} className="text-xs text-red-500 hover:underline font-bold">Marcar Rechazada</button>
+                            )}
+                           </div>
+                        </div>
+                      ))}
+                      {cotizaciones.filter(c => String(c.eventoId) === String(editingEvent?.id)).length === 0 && (
+                        <div className="text-center text-slate-400 py-12 border-2 border-dashed border-slate-200 rounded-xl">
+                          No hay versiones de cotización generadas para este evento.<br/>
+                          Asegúrate de guardar el evento primero, y luego genera una versión de la cotización.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 </div>
                 <div className="p-6 border-t border-slate-100 bg-white rounded-b-xl flex justify-end gap-3">
                   <button onClick={() => setShowEventForm(false)} className="px-6 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition">Cancelar</button>

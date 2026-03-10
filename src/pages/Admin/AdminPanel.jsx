@@ -6,7 +6,7 @@ import { useSiteSettings } from '../../hooks/useSiteSettings';
 import {
   Key, Users, RefreshCw, Plus, CheckCircle, Clock, Copy, Trash2,
   ArrowLeft, Shield, AlertTriangle, LayoutDashboard, Phone, Mail,
-  MapPin, Instagram, Save, Globe,
+  MapPin, Instagram, Save, Globe, FileText,
 } from 'lucide-react';
 
 const CODE_EXPIRY_DAYS = 7;
@@ -42,7 +42,10 @@ function ContactInfoSection({ showToast }) {
 
   // Populate form once the DB value arrives
   useEffect(() => {
-    if (!loading) setForm(contact);
+    if (!loading) {
+      const timer = setTimeout(() => setForm(contact), 0);
+      return () => clearTimeout(timer);
+    }
   }, [loading, contact]);
 
   const handleChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -91,6 +94,100 @@ function ContactInfoSection({ showToast }) {
             >
               <Save size={15} />
               {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
+const PDF_SETTINGS_FIELDS = [
+  { key: 'pdfCompanyName', label: 'Nombre Empresa', icon: <Users size={16} />, placeholder: 'Rentevent S.A.S.', type: 'text' },
+  { key: 'pdfLogoUrl', label: 'URL del Logo', icon: <Globe size={16} />, placeholder: 'https://...', type: 'url' },
+  { key: 'pdfPhone', label: 'Teléfono', icon: <Phone size={16} />, placeholder: '+57 300 000 0000', type: 'tel' },
+  { key: 'pdfEmail', label: 'Correo', icon: <Mail size={16} />, placeholder: 'info@rentevent.co', type: 'email' },
+  { key: 'pdfAddress', label: 'Dirección', icon: <MapPin size={16} />, placeholder: 'Bogotá, Colombia', type: 'text' },
+  { key: 'pdfFooterText', label: 'Texto Pié de Página', icon: <LayoutDashboard size={16} />, placeholder: 'Gracias por preferirnos.', type: 'text' },
+  { key: 'pdfDisclaimer', label: 'Términos / Disclaimer', icon: <FileText size={16} />, placeholder: 'Términos y condiciones de la cotización...', type: 'text' },
+  { key: 'pdfThemeColor', label: 'Color Tema (Hex)', icon: <LayoutDashboard size={16} />, placeholder: '#4F46E5', type: 'color' },
+];
+
+function PdfSettingsSection({ showToast }) {
+  const { contact: currentSettings, loading, saving, saveContact } = useSiteSettings();
+  const [form, setForm] = useState(null);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setForm(currentSettings || {}), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, currentSettings]);
+
+  const handleChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { error } = await saveContact(form);
+    if (error) showToast('Error al guardar configuración de PDF: ' + error, true);
+    else showToast('Configuración de PDF actualizada');
+  };
+
+  return (
+    <section className="bg-white rounded-2xl shadow-sm border border-slate-100 mt-8">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-100">
+        <LayoutDashboard size={18} className="text-indigo-600" />
+        <h2 className="text-lg font-bold text-slate-800">Configuraciones del PDF (Cotizaciones)</h2>
+      </div>
+
+      {loading || !form ? (
+        <p className="text-center text-sm text-slate-400 py-8">Cargando...</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+            {PDF_SETTINGS_FIELDS.map(({ key, label, icon, placeholder, type, hint }) => (
+              <div key={key}>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+                  {icon} {label}
+                </label>
+                {type === 'color' ? (
+                   <div className="flex items-center gap-3">
+                     <input
+                      type="color"
+                      value={form[key] || '#4F46E5'}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="w-10 h-10 border-0 rounded cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={form[key] || '#4F46E5'}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      placeholder="#4F46E5"
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none uppercase font-mono"
+                    />
+                   </div>
+                ) : (
+                  <input
+                    type={type}
+                    value={form[key] ?? ''}
+                    onChange={(e) => handleChange(key, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition"
+                  />
+                )}
+                {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold text-sm disabled:opacity-50"
+            >
+              <Save size={15} />
+              {saving ? 'Guardando...' : 'Guardar configuración PDF'}
             </button>
           </div>
         </form>
@@ -449,6 +546,8 @@ export default function AdminPanel() {
         </div>
 
         <ContactInfoSection showToast={showToast} />
+        
+        <PdfSettingsSection showToast={showToast} />
 
       </div>
 
