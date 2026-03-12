@@ -28,6 +28,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# Local skills/customization
+my-skills/
+
 # Environment Variables
 .env
 .env.local
