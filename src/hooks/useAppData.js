@@ -39,9 +39,9 @@ export function useAppData() {
           { data: dbConfig },
           { data: dbCotizaciones }
         ] = await Promise.all([
-          supabase.from('inventario').select('*').eq('user_id', user.id),
+          supabase.from('inventario').select('*'),
           supabase.from('eventos').select('*').eq('user_id', user.id),
-          supabase.from('clientes').select('*, contactos_cliente(*)').eq('user_id', user.id),
+          supabase.from('clientes').select('*, contactos_cliente(*)'),
           supabase.from('configuraciones').select('*').eq('user_id', user.id).maybeSingle(),
           // Cotizaciones doesn't have a direct user_id, we fetch all that belong to this user's eventos via RLS or a join. Since RLS handles it, we can just select '*'.
           supabase.from('cotizaciones').select('*')
@@ -116,14 +116,15 @@ export function useAppData() {
 
   // --- PROXIES TO SYNC LOCAL STATE TO SUPABASE ---
 
-  const syncArrayToDB = useCallback(async (table, prev, next, transformToDB) => {
+  const syncArrayToDB = useCallback(async (table, prev, next, transformToDB, options = {}) => {
     if (!user) return;
+    const { addUserId = true } = options;
     const { added, updated, deleted } = getArrayDiff(prev, next);
-    
-    const upserts = [...added, ...updated].map(item => ({
-      ...transformToDB(item),
-      user_id: user.id
-    }));
+
+    const upserts = [...added, ...updated].map(item => {
+      const base = transformToDB(item);
+      return addUserId ? { ...base, user_id: user.id } : base;
+    });
 
     if (upserts.length > 0) {
       const { error } = await supabase.from(table).upsert(upserts);
@@ -140,7 +141,7 @@ export function useAppData() {
   const setRealInventoryItems = useCallback((updater) => {
     _setRealInventoryItems(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      syncArrayToDB('inventario', prev, next, mapItemToDB);
+      syncArrayToDB('inventario', prev, next, mapItemToDB, { addUserId: false });
       return next;
     });
   }, [syncArrayToDB]);
@@ -148,7 +149,7 @@ export function useAppData() {
   const setEventos = useCallback((updater) => {
     _setEventos(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      syncArrayToDB('eventos', prev, next, mapEventToDB).then(async () => {
+      syncArrayToDB('eventos', prev, next, mapEventToDB, { addUserId: true }).then(async () => {
         // Handle Event Items
         const { added, updated } = getArrayDiff(prev, next);
         const changedEvents = [...added, ...updated];
@@ -185,7 +186,7 @@ export function useAppData() {
         nombre: c.nombre,
         tipo: c.tipo,
         documento: c.documento
-      })).then(async () => {
+      }), { addUserId: false }).then(async () => {
         const { added, updated } = getArrayDiff(prev, next);
         const changedClients = [...added, ...updated];
 

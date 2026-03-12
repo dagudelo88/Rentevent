@@ -90,9 +90,9 @@ create policy "Admins can manage invite codes."
 -- 3. Inventory (Unificando wedding_inventory_v8 y wedding_real_inventory_v2)
 -- ==========================================
 
+-- Collaborative: all users share the same inventory
 create table if not exists public.inventario (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
   nombre text not null,
   categoria text not null,
   cantidad integer default 0 not null,
@@ -114,9 +114,13 @@ create table if not exists public.inventario (
 alter table public.inventario enable row level security;
 
 DROP POLICY IF EXISTS "Users manage their own inventario" ON public.inventario;
-create policy "Users manage their own inventario"
-  on public.inventario for all
-  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
+DROP POLICY IF EXISTS "Authenticated users manage inventario" ON public.inventario;
+DROP POLICY IF EXISTS "Public can read inventario catalog" ON public.inventario;
+create policy "Authenticated users manage inventario"
+  on public.inventario for all to authenticated
+  using (true) with check (true);
+create policy "Public can read inventario catalog"
+  on public.inventario for select to anon using (true);
 
 DROP TRIGGER IF EXISTS on_inventario_updated ON public.inventario;
 create trigger on_inventario_updated
@@ -127,9 +131,9 @@ create trigger on_inventario_updated
 -- 4. Clients
 -- ==========================================
 
+-- Collaborative: all users share the same clients
 create table if not exists public.clientes (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
   nombre text not null,
   tipo text not null,
   documento text,
@@ -140,9 +144,9 @@ create table if not exists public.clientes (
 alter table public.clientes enable row level security;
 
 DROP POLICY IF EXISTS "Users manage their own clientes" ON public.clientes;
-create policy "Users manage their own clientes"
-  on public.clientes for all
-  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
+create policy "Authenticated users manage clientes"
+  on public.clientes for all to authenticated
+  using (true) with check (true);
 
 DROP TRIGGER IF EXISTS on_clientes_updated ON public.clientes;
 create trigger on_clientes_updated
@@ -161,14 +165,9 @@ create table if not exists public.contactos_cliente (
 alter table public.contactos_cliente enable row level security;
 
 DROP POLICY IF EXISTS "Users manage their own contactos_cliente" ON public.contactos_cliente;
-create policy "Users manage their own contactos_cliente"
-  on public.contactos_cliente for all
-  using (
-    exists (
-      select 1 from public.clientes c
-      where c.id = cliente_id and (c.user_id = auth.uid() OR public.get_my_role() = 'admin')
-    )
-  );
+create policy "Authenticated users manage contactos_cliente"
+  on public.contactos_cliente for all to authenticated
+  using (true) with check (true);
 
 -- ==========================================
 -- 5. Events
@@ -277,9 +276,9 @@ create trigger on_cotizaciones_updated
 -- purchase_link) and qualitative scoring metrics.
 -- ==========================================
 
+-- Collaborative: all users share the same product ranking
 create table if not exists public.producto_ranking (
   id                   uuid default uuid_generate_v4() primary key,
-  user_id              uuid references public.profiles(id) on delete cascade not null,
   nombre               text not null,
   categoria            text not null,
   costo                numeric default 0 not null,
@@ -304,9 +303,9 @@ create table if not exists public.producto_ranking (
 alter table public.producto_ranking enable row level security;
 
 DROP POLICY IF EXISTS "Users manage their own producto_ranking" ON public.producto_ranking;
-create policy "Users manage their own producto_ranking"
-  on public.producto_ranking for all
-  using ( auth.uid() = user_id OR public.get_my_role() = 'admin' );
+create policy "Authenticated users manage producto_ranking"
+  on public.producto_ranking for all to authenticated
+  using (true) with check (true);
 
 DROP TRIGGER IF EXISTS on_producto_ranking_updated ON public.producto_ranking;
 create trigger on_producto_ranking_updated

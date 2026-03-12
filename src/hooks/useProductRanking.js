@@ -54,7 +54,6 @@ export function useProductRanking() {
         const { data, error } = await supabase
           .from('producto_ranking')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
         if (error) console.error('Failed to load ranking items:', error);
@@ -77,7 +76,6 @@ export function useProductRanking() {
     const isNew = !item.id;
     const payload = {
       ...mapRankingItemToDB(item),
-      user_id: user.id,
       ...(isNew ? {} : { id: item.id }),
     };
 
